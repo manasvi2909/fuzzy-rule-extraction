@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE and OS
+.vscode/
+.idea/
+.DS_Store
+
+# Local secrets
+.env
+
+# Generated data and model artifacts
+data/raw/
+data/processed/
+artifacts/*.pkl
+artifacts/*.joblib
+artifacts/*.pt
+artifacts/*.pth
+
+# Generated results
+results/figures/*.png
+results/figures/*.pdf
+
+# Test cache
+.pytest_cache/

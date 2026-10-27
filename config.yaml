@@ -1,0 +1,43 @@
+project:
+  name: "fuzzy-rule-extraction"
+  random_seed: 42
+
+data:
+  dataset_name: null
+  target_column: null
+  test_size: 0.20
+  validation_size: 0.20
+  stratify: true
+
+model:
+  type: "mlp"
+  random_seed: 42
+
+fuzzy:
+  membership_terms:
+    - "Low"
+    - "Medium"
+    - "High"
+  inference_method: "Mamdani"
+
+rule_extraction:
+  antecedent_strategy: "strongest_membership"
+  conflict_resolution: "highest_total_weight"
+
+pruning:
+  strategy: "top_n"
+  top_n_values: [10, 25, 50, 100]
+
+evaluation:
+  metrics:
+    - "accuracy"
+    - "macro_f1"
+    - "fidelity"
+    - "rule_count"
+    - "mean_rule_length"
+    - "coverage"
+
+output:
+  metrics_path: "results/metrics.csv"
+  figures_dir: "results/figures"
+

@@ -1,0 +1,1 @@
+model,pruning_setting,split,seed,accuracy,macro_f1,fidelity,rule_count,mean_rule_length,coverage,fallback_rate
