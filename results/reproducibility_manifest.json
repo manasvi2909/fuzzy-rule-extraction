@@ -1,0 +1,193 @@
+{
+    "manifest_version": "1.0",
+    "generated_at_utc": "2026-11-01T11:21:30.820343+00:00",
+    "project": {
+        "name": "fuzzy-rule-extraction",
+        "random_seed": 42
+    },
+    "environment": {
+        "python_version": "3.12.3 (v3.12.3:f6650f9ad7, Apr  9 2024, 08:18:47) [Clang 13.0.0 (clang-1300.0.29.30)]",
+        "python_executable": "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "platform": "macOS-26.5-arm64-arm-64bit",
+        "system": "Darwin",
+        "machine": "arm64",
+        "packages": {
+            "numpy": "2.1.2",
+            "pandas": "2.2.3",
+            "scikit-learn": "1.8.0",
+            "matplotlib": "3.9.3",
+            "PyYAML": "6.0.2",
+            "pytest": "9.1.1",
+            "tabulate": "0.10.0"
+        }
+    },
+    "git": {
+        "commit": "838a49a4110911d87ac2d5a77c7afe7fe1676a54",
+        "branch": "member-3-rule-extraction",
+        "working_tree_clean": false
+    },
+    "configuration": {
+        "project": {
+            "name": "fuzzy-rule-extraction",
+            "random_seed": 42
+        },
+        "data": {
+            "dataset_name": "UCI Breast Cancer Wisconsin (Diagnostic)",
+            "target_column": "Diagnosis",
+            "test_size": 0.2,
+            "validation_size": 0.2,
+            "stratify": true
+        },
+        "model": {
+            "type": "mlp",
+            "random_seed": 42
+        },
+        "fuzzy": {
+            "membership_terms": [
+                "Low",
+                "Medium",
+                "High"
+            ],
+            "inference_method": "Mamdani"
+        },
+        "rule_extraction": {
+            "antecedent_strategy": "strongest_membership",
+            "conflict_resolution": "highest_total_weight"
+        },
+        "pruning": {
+            "strategy": "top_n",
+            "top_n_values": [
+                10,
+                25,
+                50,
+                100
+            ]
+        },
+        "evaluation": {
+            "metrics": [
+                "accuracy",
+                "macro_f1",
+                "fidelity",
+                "rule_count",
+                "mean_rule_length",
+                "coverage"
+            ]
+        },
+        "output": {
+            "metrics_path": "results/metrics.csv",
+            "figures_dir": "results/figures"
+        }
+    },
+    "dataset": {
+        "name": "UCI Breast Cancer Wisconsin (Diagnostic)",
+        "uci_dataset_id": 17,
+        "source": "https://archive.ics.uci.edu/dataset/17/breast+cancer+wisconsin+diagnostic",
+        "target": "Diagnosis",
+        "class_labels": {
+            "B": 0,
+            "M": 1
+        },
+        "feature_count": 30,
+        "feature_names_order": [
+            "radius1",
+            "texture1",
+            "perimeter1",
+            "area1",
+            "smoothness1",
+            "compactness1",
+            "concavity1",
+            "concave_points1",
+            "symmetry1",
+            "fractal_dimension1",
+            "radius2",
+            "texture2",
+            "perimeter2",
+            "area2",
+            "smoothness2",
+            "compactness2",
+            "concavity2",
+            "concave_points2",
+            "symmetry2",
+            "fractal_dimension2",
+            "radius3",
+            "texture3",
+            "perimeter3",
+            "area3",
+            "smoothness3",
+            "compactness3",
+            "concavity3",
+            "concave_points3",
+            "symmetry3",
+            "fractal_dimension3"
+        ],
+        "random_state": 42,
+        "split_sizes": {
+            "train": 398,
+            "validation": 85,
+            "test": 86
+        },
+        "class_counts": {
+            "train": {
+                "0": 250,
+                "1": 148
+            },
+            "validation": {
+                "0": 53,
+                "1": 32
+            },
+            "test": {
+                "0": 54,
+                "1": 32
+            }
+        },
+        "preprocessing": {
+            "imputer": "SimpleImputer(strategy='median')",
+            "scaler": "StandardScaler",
+            "fit_on": "training split only",
+            "encoding": "Benign=0, Malignant=1",
+            "identifier_columns_removed": [
+                "ID",
+                "id"
+            ]
+        }
+    },
+    "experiment_parameters": {},
+    "input_files": {
+        "/Users/manasvisharma/fuzzy-rule-extraction/config.yaml": {
+            "sha256": "4dac901111a0c26589b127388c409a6be85e974f1e9033158d3ca0157d4c7e3c",
+            "size_bytes": 742
+        },
+        "/Users/manasvisharma/fuzzy-rule-extraction/artifacts/feature_metadata.json": {
+            "sha256": "a6fe1a6256497a51fc7abd5ec6daf7255fe3aa7e9a011b376e6df2ff644bc975",
+            "size_bytes": 22499
+        },
+        "/Users/manasvisharma/fuzzy-rule-extraction/data/train_processed.csv": {
+            "sha256": "7efac0212446d046ae87bf5e815cf32bf3bb376d6c3a5ff5485ed12e07cd588f",
+            "size_bytes": 238535
+        },
+        "/Users/manasvisharma/fuzzy-rule-extraction/data/validation_processed.csv": {
+            "sha256": "010864e7d830802ba163ba678ee140eca6239a8447cad4335ef1fbe7a8d183c6",
+            "size_bytes": 51255
+        },
+        "/Users/manasvisharma/fuzzy-rule-extraction/data/test_processed.csv": {
+            "sha256": "13d5995d6b08ef4b4c605f58e1bf807e23bf729f6dd5cc61aca4c940bbe5c9ad",
+            "size_bytes": 51758
+        },
+        "/Users/manasvisharma/fuzzy-rule-extraction/results/mlp_train_predictions.csv": {
+            "sha256": "32fa813b652c9eee23824d0f44517d48fb3f94d6467a5dac666325c650ab1f66",
+            "size_bytes": 19424
+        },
+        "/Users/manasvisharma/fuzzy-rule-extraction/results/mlp_validation_predictions.csv": {
+            "sha256": "66447f09e59b7b275f9261ab3260f7d0f874363f27d58f3e4291045add1f88c3",
+            "size_bytes": 4186
+        },
+        "/Users/manasvisharma/fuzzy-rule-extraction/results/mlp_test_predictions.csv": {
+            "sha256": "fd68e93332030beb0cb3bce7df3d066574fccd4547e8230ce95df6379e9ee64e",
+            "size_bytes": 4234
+        }
+    },
+    "configuration_checks": {
+        "unresolved_configuration_fields": [],
+        "configuration_metadata_mismatches": []
+    }
+}
