@@ -5,3 +5,5 @@ matplotlib
 PyYAML
 pytest
 tabulate
+jinja2
+ucimlrepo
