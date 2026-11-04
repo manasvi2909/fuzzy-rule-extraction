@@ -25,6 +25,12 @@ artifacts/*.joblib
 artifacts/*.pt
 artifacts/*.pth
 
+# Required model artifacts
+!artifacts/final_rules_top99.joblib
+!artifacts/membership_functions.joblib
+!artifacts/preprocessor.joblib
+!artifacts/mlp_model.joblib
+
 # Generated results
 results/figures/*.png
 results/figures/*.pdf

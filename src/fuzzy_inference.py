@@ -1,15 +1,16 @@
 """
 Mamdani-style fuzzy inference for the project's binary classifier.
 
-Each rule's antecedent is evaluated with the minimum t-norm (fuzzy AND).
-The firing strength is multiplied by the rule's average weight
-(rule.weight / rule.support), then the strongest rule for each class is
-retained using max aggregation. The class with the largest aggregated
-activation wins.
+Each rule's antecedent is evaluated using the minimum t-norm
+(fuzzy AND). The resulting antecedent strength is used directly
+as the rule's firing strength.
 
-Because the consequents are categorical class labels (0/1), this project
-uses class-wise activation scores and a winner-take-all decision rather
-than claiming centroid defuzzification over a numeric output universe.
+The strongest rule for each class is retained using max aggregation.
+The class with the largest aggregated activation wins.
+
+Because the consequents are categorical class labels (0/1), this
+project uses class-wise activation scores and winner-take-all
+classification rather than centroid defuzzification.
 """
 
 from math import isfinite
@@ -55,9 +56,11 @@ def infer_sample(
     """
     Infer the class for one sample and return a prediction plus an audit trace.
 
-    Rule weights are accumulated during extraction. Dividing by support
-    converts that total into an average confidence in [0, 1], preventing
-    frequently repeated rules from producing firing strengths above 1.
+    The firing strength is determined exclusively by the minimum
+    membership degree across the rule's antecedents.
+
+    Rule weights and support are retained as extraction metadata
+    for ranking, pruning and analysis, but do not scale firing strength.
     """
     rules = _validate_rules(rules)
     if class_order is None or not class_order:
@@ -85,9 +88,8 @@ def infer_sample(
         # Mamdani AND: minimum t-norm.
         antecedent_strength = min(degrees)
 
-        # Extractor stores the SUM of candidate strengths; normalize by support.
-        confidence = min(1.0, rule.weight / rule.support)
-        firing_strength = antecedent_strength * confidence
+        # Use the minimum t-norm directly
+        firing_strength = antecedent_strength
 
         if firing_strength > 0.0:
             label = rule.consequent
@@ -98,8 +100,9 @@ def infer_sample(
             fired_rules.append({
                 "rule_index": index,
                 "antecedent_strength": float(antecedent_strength),
-                "rule_confidence": float(confidence),
                 "firing_strength": float(firing_strength),
+                "rule_weight": float(rule.weight),
+                "support": rule.support,
                 "consequent": label,
                 "antecedents": dict(rule.antecedents),
             })

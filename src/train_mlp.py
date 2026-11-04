@@ -70,7 +70,12 @@ def main():
 
     metrics = {
         "model": "sklearn.neural_network.MLPClassifier",
-        "architecture": [30, 16, 8, 2],
+        "architecture": [
+            int(X_train.shape[1]),
+            16,
+            8,
+            int(model.n_outputs_)
+        ],
         "hidden_layer_sizes": [16, 8],
         "activation": "relu",
         "solver": "adam",

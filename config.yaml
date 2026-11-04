@@ -5,8 +5,8 @@ project:
 data:
   dataset_name: "UCI Breast Cancer Wisconsin (Diagnostic)"
   target_column: "Diagnosis"
-  test_size: 0.20
-  validation_size: 0.20
+  test_size: 0.15
+  validation_size: 0.15
   stratify: true
 
 model:
