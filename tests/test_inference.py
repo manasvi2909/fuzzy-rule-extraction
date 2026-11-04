@@ -35,7 +35,7 @@ def test_single_rule_predicts_its_consequent(membership_functions):
     assert result["prediction"] == 1
     assert result["covered"] is True
     assert result["fallback"] is False
-    assert result["class_scores"][1] == pytest.approx(0.8)
+    assert result["class_scores"][1] == pytest.approx(1.0)
 
 
 def test_and_uses_minimum_t_norm(membership_functions):
@@ -48,27 +48,29 @@ def test_and_uses_minimum_t_norm(membership_functions):
     assert result["class_scores"][1] == pytest.approx(0.5)
 
 
-def test_rule_weight_is_normalized_by_support(membership_functions):
-    rules = [Rule({"f1": "Medium"}, 1, 1.6, 2)]
+def test_rule_weight_does_not_scale_firing_strength(membership_functions):
+    rules = [Rule({"f1": "Medium"}, 1, 0.2, 10)]
+
     result = infer_sample(
         {"f1": 5.0, "f2": 5.0}, rules, membership_functions
     )
 
-    assert result["class_scores"][1] == pytest.approx(0.8)
+    assert result["class_scores"][1] == pytest.approx(1.0)
 
 
 def test_max_aggregation_keeps_strongest_rule_per_class(membership_functions):
     rules = [
-        Rule({"f1": "Medium"}, 0, 0.4, 1),
+        Rule({"f1": "Low"}, 0, 0.4, 1),
         Rule({"f2": "Medium"}, 0, 0.9, 1),
-        Rule({"f1": "Medium"}, 1, 0.7, 1),
+        Rule({"f1": "Low"}, 1, 0.7, 1),
     ]
+
     result = infer_sample(
-        {"f1": 5.0, "f2": 5.0}, rules, membership_functions
+        {"f1": 2.5, "f2": 5.0}, rules, membership_functions
     )
 
-    assert result["class_scores"][0] == pytest.approx(0.9)
-    assert result["class_scores"][1] == pytest.approx(0.7)
+    assert result["class_scores"][0] == pytest.approx(1.0)
+    assert result["class_scores"][1] == pytest.approx(0.5)
     assert result["prediction"] == 0
 
 

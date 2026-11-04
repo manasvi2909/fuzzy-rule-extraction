@@ -1,28 +1,28 @@
 {
     "manifest_version": "1.0",
-    "generated_at_utc": "2026-11-01T11:21:30.820343+00:00",
+    "generated_at_utc": "2026-11-04T16:59:56.239538+00:00",
     "project": {
         "name": "fuzzy-rule-extraction",
         "random_seed": 42
     },
     "environment": {
         "python_version": "3.12.3 (v3.12.3:f6650f9ad7, Apr  9 2024, 08:18:47) [Clang 13.0.0 (clang-1300.0.29.30)]",
-        "python_executable": "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "python_executable": "/Users/manasvisharma/fuzzy-rule-extraction/.venv/bin/python",
         "platform": "macOS-26.5-arm64-arm-64bit",
         "system": "Darwin",
         "machine": "arm64",
         "packages": {
-            "numpy": "2.1.2",
-            "pandas": "2.2.3",
-            "scikit-learn": "1.8.0",
-            "matplotlib": "3.9.3",
-            "PyYAML": "6.0.2",
+            "numpy": "2.5.4",
+            "pandas": "3.1.0",
+            "scikit-learn": "1.9.1",
+            "matplotlib": "3.11.2",
+            "PyYAML": "6.0.3",
             "pytest": "9.1.1",
             "tabulate": "0.10.0"
         }
     },
     "git": {
-        "commit": "838a49a4110911d87ac2d5a77c7afe7fe1676a54",
+        "commit": "a38a732c2b823ac6c974892904e5e254c0b8b701",
         "branch": "member-3-rule-extraction",
         "working_tree_clean": false
     },
@@ -34,8 +34,8 @@
         "data": {
             "dataset_name": "UCI Breast Cancer Wisconsin (Diagnostic)",
             "target_column": "Diagnosis",
-            "test_size": 0.2,
-            "validation_size": 0.2,
+            "test_size": 0.15,
+            "validation_size": 0.15,
             "stratify": true
         },
         "model": {
@@ -151,10 +151,19 @@
             ]
         }
     },
-    "experiment_parameters": {},
+    "experiment_parameters": {
+        "initial_rule_count": 290,
+        "selected_rule_count_before_ablation": 100,
+        "final_rule_count": 99,
+        "removed_original_rule_index": 0,
+        "selection_split": "validation",
+        "selection_seed": 42,
+        "inference_method": "minimum_t_norm_with_max_aggregation",
+        "test_set_used_for_model_selection": false
+    },
     "input_files": {
         "/Users/manasvisharma/fuzzy-rule-extraction/config.yaml": {
-            "sha256": "4dac901111a0c26589b127388c409a6be85e974f1e9033158d3ca0157d4c7e3c",
+            "sha256": "a29ce96b859f9cbf652498137859db312199c4a8b5fd87b3e915c0ca8c606555",
             "size_bytes": 742
         },
         "/Users/manasvisharma/fuzzy-rule-extraction/artifacts/feature_metadata.json": {
@@ -174,16 +183,88 @@
             "size_bytes": 51758
         },
         "/Users/manasvisharma/fuzzy-rule-extraction/results/mlp_train_predictions.csv": {
-            "sha256": "32fa813b652c9eee23824d0f44517d48fb3f94d6467a5dac666325c650ab1f66",
-            "size_bytes": 19424
+            "sha256": "a07c365174042b98fce1f7712b00ab8569762f32664d4b1e999bf3585dfc1889",
+            "size_bytes": 19425
         },
         "/Users/manasvisharma/fuzzy-rule-extraction/results/mlp_validation_predictions.csv": {
-            "sha256": "66447f09e59b7b275f9261ab3260f7d0f874363f27d58f3e4291045add1f88c3",
-            "size_bytes": 4186
+            "sha256": "4a9816075ead1597f503032d003f3afe2ca6b9b78a1251f2996853307708716c",
+            "size_bytes": 4184
         },
         "/Users/manasvisharma/fuzzy-rule-extraction/results/mlp_test_predictions.csv": {
-            "sha256": "fd68e93332030beb0cb3bce7df3d066574fccd4547e8230ce95df6379e9ee64e",
-            "size_bytes": 4234
+            "sha256": "b56e270e6ac398637a619fb5eaa4019dcde8fbbc131a4bed9328d613a2060129",
+            "size_bytes": 4232
+        },
+        "/Users/manasvisharma/fuzzy-rule-extraction/results/mlp_metrics.json": {
+            "sha256": "2ddfafffa72633491e5bb05b49d50dda21c2572807657ac0e00ca3a35ce4ce57",
+            "size_bytes": 829
+        },
+        "/Users/manasvisharma/fuzzy-rule-extraction/results/metrics.csv": {
+            "sha256": "12f4a3cb42f6fc119de45c9dcdb0165532cdcc522ffc9334560979b26aa1eec2",
+            "size_bytes": 819
+        },
+        "/Users/manasvisharma/fuzzy-rule-extraction/artifacts/mlp_model.joblib": {
+            "sha256": "6db8efac62f5fce1b11be072fc09fce53080c08db6b6b6dba973dde255b8ad67",
+            "size_bytes": 37224
+        },
+        "/Users/manasvisharma/fuzzy-rule-extraction/artifacts/preprocessor.joblib": {
+            "sha256": "bb26df116e4a0a13c179b534dfff2c1892b19d3d33f2ef5abdf31e33bfe9e5c7",
+            "size_bytes": 2577
+        },
+        "/Users/manasvisharma/fuzzy-rule-extraction/artifacts/membership_functions.joblib": {
+            "sha256": "6116576244a92b911e96696e980cde350646eb1a09b94136479400afa71041a3",
+            "size_bytes": 3347
+        },
+        "/Users/manasvisharma/fuzzy-rule-extraction/artifacts/final_rules_top99.joblib": {
+            "sha256": "021c07dd8ee2b44f8c2c96a77e8ff8948f482fbc8fdde138df0958f30c313c26",
+            "size_bytes": 15784
+        },
+        "/Users/manasvisharma/fuzzy-rule-extraction/artifacts/final_model_metadata.json": {
+            "sha256": "4ee4d494a8781736aee73b33901fe674e8f447758aee1126a6a1deb3355e257c",
+            "size_bytes": 427
+        },
+        "/Users/manasvisharma/fuzzy-rule-extraction/artifacts/selection_metadata.json": {
+            "sha256": "1c459c23e95fc8207d38732714f9be7dd757fb08d3c645c207a0805d27e903bf",
+            "size_bytes": 328
+        },
+        "/Users/manasvisharma/fuzzy-rule-extraction/results/pruning_validation.csv": {
+            "sha256": "6e6d9092c881a0ef868b9cd303c14e35cfd652b601f8a5a2cb3eda3e80bacd32",
+            "size_bytes": 737
+        },
+        "/Users/manasvisharma/fuzzy-rule-extraction/results/antecedent_reduction_validation.csv": {
+            "sha256": "3632933c98a7feabe4435f8f01413497e2bda7e72dbef129159feb7be8a6fa2d",
+            "size_bytes": 602
+        },
+        "/Users/manasvisharma/fuzzy-rule-extraction/results/class_aware_pruning_validation.csv": {
+            "sha256": "266fb4861bb8580b72aa863609049b9d1e84294ca8fc0d31b567d754b5ddb9ed",
+            "size_bytes": 648
+        },
+        "/Users/manasvisharma/fuzzy-rule-extraction/results/rule_0_ablation_changes.csv": {
+            "sha256": "5f630dc2af0ed9208306aeb5b89a2d527c4340249b8d75f0ef411f4da4399645",
+            "size_bytes": 7921
+        },
+        "/Users/manasvisharma/fuzzy-rule-extraction/results/threshold_validation.csv": {
+            "sha256": "916321fd47125d5f4901a6af550e0ef88356b57c1f22ef713b3c8a78f1e4a53d",
+            "size_bytes": 3324
+        },
+        "/Users/manasvisharma/fuzzy-rule-extraction/results/final_candidate_test_predictions.csv": {
+            "sha256": "90b1ea4422d911123acdd381520857c5385e4ad1b5bb16a78beef098fb425952",
+            "size_bytes": 704
+        },
+        "/Users/manasvisharma/fuzzy-rule-extraction/src/fuzzy_inference.py": {
+            "sha256": "094fb8de5786b838862ae3405e2817a98226aad3680277f0febd45884ddb24cc",
+            "size_bytes": 6171
+        },
+        "/Users/manasvisharma/fuzzy-rule-extraction/src/extract_rules.py": {
+            "sha256": "a0370f4a183a56ff2103e16f2e3dadab9febef617181a7dd42a14d4bb8fc7b78",
+            "size_bytes": 3260
+        },
+        "/Users/manasvisharma/fuzzy-rule-extraction/src/prune_rules.py": {
+            "sha256": "1d07386c96761d24a30cc2e2834ab7af4bb8e0650c76e6d1399d6b4e37d95bf4",
+            "size_bytes": 1151
+        },
+        "/Users/manasvisharma/fuzzy-rule-extraction/src/evaluate.py": {
+            "sha256": "c43d4a68c55a91ec53dce5219d554c49f94dab4839b7fa79fe99d8119b849a5f",
+            "size_bytes": 2726
         }
     },
     "configuration_checks": {

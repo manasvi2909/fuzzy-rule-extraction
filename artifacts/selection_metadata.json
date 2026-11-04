@@ -1,0 +1,11 @@
+{
+  "selected_configuration": "top_100",
+  "rule_count": 100,
+  "selection_split": "validation",
+  "selection_seed": 42,
+  "minimum_accuracy": 0.78,
+  "minimum_fidelity": 0.78,
+  "minimum_coverage": 0.98,
+  "inference_method": "minimum_t_norm_max_aggregation",
+  "membership_functions": "artifacts/membership_functions.joblib"
+}

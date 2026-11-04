@@ -1,0 +1,13 @@
+{
+    "model": "Mamdani-style fuzzy classifier",
+    "rule_count": 99,
+    "original_rule_count": 100,
+    "removed_original_rule_index": 0,
+    "inference_method": "minimum t-norm with max aggregation",
+    "selection_basis": "validation ablation experiment",
+    "test_accuracy": 0.8837209302,
+    "test_macro_f1": 0.8698717949,
+    "test_fidelity": 0.8720930233,
+    "test_coverage": 1.0,
+    "test_malignant_recall": 0.75
+}
