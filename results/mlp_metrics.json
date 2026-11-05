@@ -4,7 +4,7 @@
     30,
     16,
     8,
-    2
+    1
   ],
   "hidden_layer_sizes": [
     16,
@@ -18,7 +18,6 @@
   "random_state": 42,
   "early_stopping": false,
   "actual_training_iterations": 415,
-  "converged_within_max_iter": true,
   "training_rows": 398,
   "validation_rows": 85,
   "validation_accuracy": 0.9647058823529412,
@@ -40,5 +39,6 @@
     "benign": 0,
     "malignant": 1
   },
-  "test_set_used_for_selection": false
+  "test_set_used_for_selection": false,
+  "stopped_before_max_iter": true
 }

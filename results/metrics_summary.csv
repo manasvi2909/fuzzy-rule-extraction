@@ -1,0 +1,7 @@
+model,pruning_setting,split,rule_count,accuracy_mean,accuracy_std,accuracy_count,macro_f1_mean,macro_f1_std,macro_f1_count,fidelity_mean,fidelity_std,fidelity_count,rule_count_mean,rule_count_std,rule_count_count,mean_rule_length_mean,mean_rule_length_std,mean_rule_length_count,coverage_mean,coverage_std,coverage_count,fallback_rate_mean,fallback_rate_std,fallback_rate_count
+Fuzzy,all,validation,290,0.8,,1,0.7715415019762846,,1,0.788235294117647,,1,290.0,,1,30.0,,1,0.9882352941176471,,1,0.011764705882352941,,1
+Fuzzy,final_top_99,test,99,0.8837209302,,1,0.8698717949,,1,0.8720930233,,1,99.0,,1,30.0,,1,1.0,,1,0.0,,1
+Fuzzy,top_10,validation,10,0.7411764705882353,,1,0.6626984126984127,,1,0.7764705882352941,,1,10.0,,1,30.0,,1,0.9647058823529412,,1,0.03529411764705882,,1
+Fuzzy,top_100,validation,100,0.8,,1,0.7669730688598613,,1,0.788235294117647,,1,100.0,,1,30.0,,1,0.9882352941176471,,1,0.011764705882352941,,1
+Fuzzy,top_25,validation,25,0.7529411764705882,,1,0.6731367881340413,,1,0.788235294117647,,1,25.0,,1,30.0,,1,0.9764705882352941,,1,0.023529411764705882,,1
+Fuzzy,top_50,validation,50,0.7647058823529411,,1,0.7166666666666667,,1,0.7764705882352941,,1,50.0,,1,30.0,,1,0.9882352941176471,,1,0.011764705882352941,,1

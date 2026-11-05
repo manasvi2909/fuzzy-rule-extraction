@@ -18,7 +18,7 @@ fuzzy:
     - "Low"
     - "Medium"
     - "High"
-  inference_method: "Mamdani"
+  inference_method: "Mamdani-inspired (minimum t-norm, maximum class-wise aggregation, winner-take-all)"
 
 rule_extraction:
   antecedent_strategy: "strongest_membership"

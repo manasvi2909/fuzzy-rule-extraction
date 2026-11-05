@@ -85,7 +85,7 @@ def main():
         "random_state": RANDOM_STATE,
         "early_stopping": False,
         "actual_training_iterations": int(model.n_iter_),
-        "converged_within_max_iter": bool(model.n_iter_ < 500),
+        "stopped_before_max_iter": bool(model.n_iter_ < 500),
         "training_rows": int(len(X_train)),
         "validation_rows": int(len(X_val)),
         "validation_accuracy": float(accuracy_score(y_val, val_pred)),
