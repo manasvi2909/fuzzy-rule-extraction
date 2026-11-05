@@ -164,7 +164,6 @@ def _plot_metric(
     for model in grouped["model"].unique():
         part = grouped[grouped["model"] == model]
 
-        # Error bars are meaningful only with multiple seeds.
         errors = part["std"].fillna(0).to_numpy()
 
         ax.errorbar(
@@ -181,6 +180,10 @@ def _plot_metric(
     ax.set_xlabel("Number of retained rules", fontsize=11)
     ax.set_ylabel(ylabel, fontsize=11)
     ax.set_title(f"{title} ({split.capitalize()} split)", fontsize=13)
+
+    # Full metric scale avoids exaggerating small differences.
+    if metric in {"accuracy", "macro_f1", "fidelity"}:
+        ax.set_ylim(0, 1)
 
     ax.grid(True, linestyle="--", alpha=0.35)
     ax.legend(frameon=False)
@@ -277,7 +280,7 @@ def plot_coverage_fallback(df, output_dir, split="test"):
 
 
 def plot_accuracy_fidelity_tradeoff(df, output_dir, split="test"):
-    """Show the accuracy-fidelity trade-off."""
+    """Show the accuracy-fidelity trade-off without crowded annotations."""
 
     data = df[df["split"] == split].copy()
 
@@ -290,9 +293,10 @@ def plot_accuracy_fidelity_tradeoff(df, output_dir, split="test"):
         )[["accuracy", "fidelity"]]
         .mean()
         .reset_index()
+        .sort_values("rule_count")
     )
 
-    fig, ax = plt.subplots(figsize=(7.5, 6))
+    fig, ax = plt.subplots(figsize=(8, 6))
 
     for model in grouped["model"].unique():
         part = grouped[grouped["model"] == model]
@@ -300,26 +304,20 @@ def plot_accuracy_fidelity_tradeoff(df, output_dir, split="test"):
         ax.scatter(
             part["accuracy"],
             part["fidelity"],
-            s=75,
-            label=model
+            s=90,
+            label=model,
+            zorder=3
         )
-
-        for _, row in part.iterrows():
-            ax.annotate(
-                f"{int(row['rule_count'])} rules",
-                (row["accuracy"], row["fidelity"]),
-                xytext=(5, 5),
-                textcoords="offset points",
-                fontsize=8
-            )
 
     ax.set_xlabel("Predictive accuracy", fontsize=11)
     ax.set_ylabel("Fidelity to MLP", fontsize=11)
     ax.set_title(
-        f"Accuracy–Fidelity Trade-off ({split.capitalize()} split)",
+        f"Accuracy-Fidelity Trade-off ({split.capitalize()} split)",
         fontsize=13
     )
 
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
     ax.grid(True, linestyle="--", alpha=0.35)
     ax.legend(frameon=False)
     fig.tight_layout()

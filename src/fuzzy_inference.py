@@ -1,5 +1,5 @@
 """
-Mamdani-style fuzzy inference for the project's binary classifier.
+Mamdani-inspired fuzzy rule classification for the project's binary classifier.
 
 Each rule's antecedent is evaluated using the minimum t-norm
 (fuzzy AND). The resulting antecedent strength is used directly
