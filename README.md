@@ -1,372 +1,226 @@
 # Opening the Black Box: Extracting Fuzzy Rules from Trained Neural Networks
 
-### Interpretable Machine Learning Through Fuzzy Rule Extraction
+**An interpretable machine-learning experiment using fuzzy rule extraction and surrogate modelling.**
 
-An experimental framework for transforming the predictions of a trained Multi-Layer Perceptron (MLP) into an interpretable fuzzy rule-based classification system.
+This project trains a Multi-Layer Perceptron (MLP) on the Breast Cancer Wisconsin (Diagnostic) dataset, then extracts a fuzzy rule-based classifier that approximates the MLP's predictions. It investigates the trade-off between predictive performance, fidelity to the teacher model, rule-base complexity, and interpretability.
 
----
+> **Final result:** The selected fuzzy surrogate contains **99 rules** and achieves **88.37% test accuracy**, **86.99% test macro-F1**, and **87.21% fidelity** to the MLP on a held-out test set of 86 observations.
 
-## Table of Contents
-
-1. [Project Overview](#project-overview)
-2. [Problem Statement](#problem-statement)
-3. [Objectives](#objectives)
-4. [Research Approach](#research-approach)
-5. [Dataset](#dataset)
-6. [System Architecture](#system-architecture)
-7. [Methodology](#methodology)
-   - [Data Preprocessing](#1-data-preprocessing)
-   - [Training the Neural Network](#2-training-the-mlp-teacher-model)
-   - [Fuzzy Membership Functions](#3-fuzzy-membership-functions)
-   - [Fuzzy Rule Extraction](#4-fuzzy-rule-extraction)
-   - [Conflict Resolution](#5-conflict-resolution)
-   - [Fuzzy Inference](#6-fuzzy-inference)
-   - [Rule Ranking and Pruning](#7-rule-ranking-and-pruning)
-   - [Rule Ablation](#8-rule-ablation)
-8. [Experimental Design](#experimental-design)
-9. [Evaluation Metrics](#evaluation-metrics)
-10. [Results and Analysis](#results-and-analysis)
-11. [Interpretability and Explainability](#interpretability-and-explainability)
-12. [Repository Structure](#repository-structure)
-13. [Installation and Setup](#installation-and-setup)
-14. [Running the Project](#running-the-project)
-15. [Testing](#testing)
-16. [Reproducibility](#reproducibility)
-17. [Technologies Used](#technologies-used)
-18. [Limitations](#limitations)
-19. [Future Improvements](#future-improvements)
-20. [Disclaimer](#disclaimer)
+The repository includes the core implementation, saved model artifacts, experiment outputs, and automated tests. Some exploratory result files are preserved without their original generation scripts; their provenance is documented below.
 
 ---
 
-## Project Overview
+## Table of contents
 
-Modern machine learning models can achieve excellent predictive performance while remaining difficult to interpret. Neural networks, particularly Multi-Layer Perceptrons, learn complex nonlinear relationships between input features and target classes. However, understanding the reasoning behind an individual prediction or the overall decision-making process is not straightforward.
-
-This project investigates an approach to improving model interpretability by extracting a fuzzy rule-based surrogate from a trained neural network.
-
-The central idea is to use the neural network as a **teacher model** and construct a fuzzy inference system that approximates its classification behaviour through human-readable IF–THEN rules.
-
-Rather than attempting to inspect the internal weights and hidden-layer activations of the neural network directly, the project uses its predictions to generate a collection of fuzzy rules. These rules are subsequently processed, ranked, pruned, and evaluated to produce a smaller rule base.
-
-The resulting system is designed to balance three objectives:
-
-- **Predictive performance:** How accurately does the fuzzy model classify unseen observations?
-- **Model fidelity:** How closely does the fuzzy model reproduce the predictions of the original neural network?
-- **Interpretability:** How manageable and understandable is the extracted rule base?
-
-The project implements an end-to-end experimental framework covering neural network training, fuzzy representation, rule extraction, conflict resolution, fuzzy inference, pruning, ablation, and quantitative evaluation.
-
-### Final outcome
-
-The final fuzzy surrogate contains **99 rules**, evaluated on a held-out test set of 86 observations.
-
-| Evaluation metric | Final fuzzy surrogate |
-|---|---:|
-| Test accuracy | 88.37% |
-| Test macro-F1 | 86.99% |
-| Fidelity to MLP | 87.21% |
-| Coverage | 100% |
-| Fallback rate | 0% |
-
-The original MLP teacher achieves 98.84% test accuracy. The difference illustrates the performance cost associated with approximating a more complex model using a finite fuzzy rule base.
+- [Project overview](#project-overview)
+- [Problem statement](#problem-statement)
+- [Objectives](#objectives)
+- [Dataset](#dataset)
+- [Methodology](#methodology)
+  - [1. Data preparation](#1-data-preparation)
+  - [2. MLP teacher model](#2-mlp-teacher-model)
+  - [3. Fuzzy membership functions](#3-fuzzy-membership-functions)
+  - [4. Rule extraction](#4-rule-extraction)
+  - [5. Conflict resolution](#5-conflict-resolution)
+  - [6. Fuzzy inference](#6-fuzzy-inference)
+  - [7. Rule ranking and pruning](#7-rule-ranking-and-pruning)
+  - [8. Rule ablation](#8-rule-ablation)
+  - [9. Decision-tree surrogate](#9-decision-tree-surrogate)
+- [System workflow](#system-workflow)
+- [Experimental design](#experimental-design)
+- [Evaluation metrics](#evaluation-metrics)
+- [Results](#results)
+  - [Final fuzzy model](#final-fuzzy-model)
+  - [Comparison with other models](#comparison-with-other-models)
+  - [Confusion matrices](#confusion-matrices)
+  - [Rule ablation findings](#rule-ablation-findings)
+- [Interpretability](#interpretability)
+- [Repository structure](#repository-structure)
+- [Getting started](#getting-started)
+- [Running the project](#running-the-project)
+- [Testing](#testing)
+- [Saved artifacts and results](#saved-artifacts-and-results)
+- [Reproducibility and experimental provenance](#reproducibility-and-experimental-provenance)
+- [Technology stack](#technology-stack)
+- [Limitations](#limitations)
+- [Future work](#future-work)
+- [Disclaimer](#disclaimer)
 
 ---
 
-## Problem Statement
+## Project overview
 
-Neural networks are frequently treated as black-box predictive systems because their learned representations are distributed across multiple interconnected layers.
+Neural networks can learn complex nonlinear relationships and achieve strong predictive performance, but their decisions are not naturally expressed as simple human-readable rules. This project explores whether the observable classification behaviour of a trained neural network can be approximated by a fuzzy rule-based surrogate.
 
-Although these models can capture complex patterns, their predictions are not naturally expressed in terms of simple human-readable decision rules.
+The MLP acts as the **teacher**. Its predictions are used to assign consequents to fuzzy rules. The extracted rule base is then ranked, pruned, and evaluated as a separate classifier.
 
-This creates an interpretability challenge:
+The work focuses on three complementary questions:
 
-**Can the classification behaviour of a trained neural network be approximated using a compact fuzzy rule-based system without losing an excessive amount of predictive performance?**
+1. **Predictive performance:** How accurately does the fuzzy surrogate classify observations against the dataset's ground-truth labels?
+2. **Model fidelity:** How often does the surrogate agree with the MLP teacher?
+3. **Rule-base interpretability:** How much can the extracted representation be simplified while retaining useful predictive behaviour?
 
-This project approaches the problem through fuzzy rule extraction.
+Accuracy and fidelity are not interchangeable. A surrogate may imitate the teacher on an observation even when the teacher itself predicts the wrong ground-truth class.
 
-Given a trained neural network \(f_{\theta}\), the objective is to construct a fuzzy classifier \(g_{\phi}\) whose predictions approximate those of the teacher:
+### At a glance
+
+| Item | Description |
+|---|---|
+| Task | Binary classification |
+| Dataset | Breast Cancer Wisconsin (Diagnostic) |
+| Teacher model | Scikit-learn `MLPClassifier` |
+| Surrogate | Mamdani-inspired fuzzy rule classifier |
+| Initial extracted rules | 290 |
+| Final fuzzy rules | **99** |
+| Input features | 30 numerical features |
+| Train / validation / test | 398 / 85 / 86 observations |
+| Random seed | 42 |
+
+---
+
+## Problem statement
+
+A trained neural network represents its decision function through learned parameters and nonlinear transformations across hidden layers. Its predictions can be inspected, but the reasoning is not directly available as a concise set of linguistic decision rules.
+
+The project investigates the following question:
+
+**Can the classification behaviour of a trained neural network be approximated using a fuzzy rule-based system while retaining useful predictive performance and providing a more inspectable representation?**
+
+Given a trained teacher \(f_\theta\), the objective is to construct a fuzzy surrogate \(g_\phi\) such that:
 
 \[
-g_{\phi}(x) \approx f_{\theta}(x)
+g_\phi(x) \approx f_\theta(x)
 \]
 
-Here:
+Here, \(x\) is an input observation, \(f_\theta\) is the trained MLP, and \(g_\phi\) is the fuzzy classifier.
 
-- \(f_{\theta}\) represents the trained MLP teacher.
-- \(g_{\phi}\) represents the extracted fuzzy surrogate.
-- \(x\) represents an input observation.
-- \(\theta\) and \(\phi\) represent the respective model parameters and rule-base configuration.
-
-The objective is not to reproduce the internal architecture of the neural network. Instead, it is to approximate its observable classification behaviour through a collection of interpretable fuzzy rules.
-
-The quality of the approximation is assessed through both predictive performance against the actual dataset labels and fidelity against the teacher's predictions.
+The goal is to approximate the teacher's observable predictions—not to reconstruct its internal weights, hidden representations, or exact computational process.
 
 ---
 
 ## Objectives
 
-The project is designed around the following objectives:
-
-1. Train a sufficiently accurate Multi-Layer Perceptron on a structured classification dataset.
-2. Represent numerical input features using fuzzy membership functions.
-3. Generate candidate fuzzy rules using the predictions of the trained neural network.
-4. Resolve conflicting rules that share identical antecedents.
-5. Implement a fuzzy inference mechanism using fuzzy conjunction and aggregation.
-6. Rank and prune extracted rules to reduce rule-base complexity.
-7. Investigate the effect of rule removal through ablation experiments.
-8. Compare the fuzzy surrogate against the original neural network.
-9. Quantify the trade-off between predictive accuracy, model fidelity, coverage, and interpretability.
-10. Maintain reproducible experiments through configuration files, saved artifacts, metadata, and automated tests.
-
----
-
-## Research Approach
-
-The project follows a teacher–surrogate approach.
-
-The neural network is trained using the original dataset labels. Once trained, its predictions are used as the source of the fuzzy rule consequents.
-
-The fuzzy system is therefore trained to approximate the teacher's behaviour rather than independently learning an entirely separate decision boundary from the original labels.
-
-This distinction is important:
-
-- **Ground-truth labels** are used to assess classification performance.
-- **MLP predictions** are used to construct and assess the surrogate's imitation of the teacher.
-
-The overall workflow is:
-
-```text
-                 Dataset
-                    |
-                    v
-           Data Preprocessing
-                    |
-                    v
-             Train / Validation / Test
-                    |
-                    v
-              MLP Teacher
-                    |
-                    v
-          MLP Predictions
-                    |
-                    v
-       Fuzzy Membership Functions
-                    |
-                    v
-         Candidate Rule Generation
-                    |
-                    v
-            Conflict Resolution
-                    |
-                    v
-           Initial Rule Base
-                    |
-                    v
-          Rule Ranking and Pruning
-                    |
-                    v
-             Rule Ablation
-                    |
-                    v
-          Final Fuzzy Rule Base
-                    |
-                    v
-             Fuzzy Inference
-                    |
-                    v
-          Model Evaluation
-                    |
-                    v
-       Performance and Fidelity Analysis
-```
+- Train an MLP teacher on a structured binary-classification dataset.
+- Transform numerical features into fuzzy linguistic terms.
+- Extract candidate IF–THEN rules using the teacher's predictions.
+- Resolve conflicting rules with identical antecedents.
+- Implement fuzzy antecedent evaluation and class-wise aggregation.
+- Rank and prune rules to reduce the size of the rule base.
+- Study the effect of removing an individual rule.
+- Compare the fuzzy surrogate with the MLP teacher and a decision-tree surrogate.
+- Evaluate predictive performance, teacher fidelity, coverage, fallback behaviour, and rule-base complexity.
+- Preserve experiment configurations, outputs, model artifacts, and automated tests.
 
 ---
 
 ## Dataset
 
-### UCI Breast Cancer Wisconsin (Diagnostic)
+### Breast Cancer Wisconsin (Diagnostic)
 
-The project uses the **Breast Cancer Wisconsin (Diagnostic) dataset**, obtained from the UCI Machine Learning Repository.
+The project uses the **Breast Cancer Wisconsin (Diagnostic)** dataset from the [UCI Machine Learning Repository](https://archive.ics.uci.edu/dataset/17/breast+cancer+wisconsin+diagnostic).
 
-The dataset contains numerical measurements computed from digitized images of fine needle aspirate samples of breast masses.
-
-Each observation is represented using 30 numerical features describing characteristics of cell nuclei.
-
-The classification task is binary:
-
-- **Benign (0):** Non-malignant observation.
-- **Malignant (1):** Malignant observation.
-
-### Dataset characteristics
+The dataset contains measurements computed from digitized images of fine needle aspirate samples of breast masses. Each observation has 30 numerical features describing cell-nucleus characteristics.
 
 | Property | Value |
-|---|---|
-| Dataset | Breast Cancer Wisconsin (Diagnostic) |
-| Source | UCI Machine Learning Repository |
-| Total observations | 569 |
+|---|---:|
+| Observations | 569 |
 | Input features | 30 |
-| Target classes | 2 |
+| Classes | 2 |
 | Feature type | Numerical |
-| Classification type | Binary |
+| Task | Binary classification |
 
-### Feature categories
+The target classes are encoded as:
 
-The 30 numerical attributes are organised into three groups:
+- `0` — Benign
+- `1` — Malignant
 
-- Mean measurements
-- Standard error measurements
-- Worst-case measurements
+The 30 attributes cover mean, standard-error, and worst-case measurements of characteristics such as radius, texture, perimeter, area, smoothness, compactness, concavity, concave points, symmetry, and fractal dimension.
 
-These describe characteristics such as:
+### Data split
 
-- Radius
-- Texture
-- Perimeter
-- Area
-- Smoothness
-- Compactness
-- Concavity
-- Concave points
-- Symmetry
-- Fractal dimension
+A stratified split with random seed `42` preserves the class distribution across the partitions.
 
-Each category contains measurements derived from the cell-nucleus characteristics.
-
-### Dataset split
-
-The dataset is partitioned using stratified sampling to preserve the class distribution across the splits.
-
-| Split | Percentage | Observations |
+| Split | Proportion | Observations |
 |---|---:|---:|
 | Training | 70% | 398 |
 | Validation | 15% | 85 |
 | Test | 15% | 86 |
 | **Total** | **100%** | **569** |
 
-The random seed is fixed at 42.
+The partitions have separate roles:
 
-The three splits serve different purposes:
-
-- **Training set:** Used to fit preprocessing transformations, train the MLP, and establish the fuzzy membership functions.
-- **Validation set:** Used for rule-pruning experiments, model selection, and ablation decisions.
-- **Test set:** Reserved for the final, independent evaluation of the selected fuzzy surrogate.
+- **Training:** Fit preprocessing, train the MLP, and define membership functions.
+- **Validation:** Compare rule-selection configurations and make model-selection decisions.
+- **Test:** Evaluate the selected model once on held-out observations.
 
 The test set is not used to select the final rule configuration.
 
 ---
 
-## System Architecture
-
-The implementation is organised into modular components, each responsible for a distinct stage of the pipeline.
-
-| Component | Responsibility |
-|---|---|
-| Data preprocessing | Imputation, standardisation, and dataset preparation |
-| MLP teacher | Learns the original classification task |
-| Membership functions | Converts numerical inputs into fuzzy membership degrees |
-| Rule extractor | Generates candidate fuzzy rules from teacher predictions |
-| Conflict resolver | Handles identical antecedents with different consequents |
-| Fuzzy inference engine | Evaluates rules and generates class predictions |
-| Rule pruner | Ranks and selects a smaller rule base |
-| Evaluation module | Measures accuracy, fidelity, coverage, and complexity |
-| Analysis utilities | Investigates pruning, ablation, feature importance, and inference behaviour |
-| Reproducibility module | Records experiment configuration and input-file hashes |
-
-The modular architecture separates model training, fuzzy rule generation, inference, and evaluation. This makes it possible to investigate individual components without changing the entire pipeline.
-
----
-
 ## Methodology
 
-### 1. Data Preprocessing
+### 1. Data preparation
 
-Preprocessing is performed before training the teacher model.
+The preprocessing pipeline consists of:
 
-The pipeline uses:
+1. **Median imputation** for missing numerical values, where present.
+2. **Standardisation** using scikit-learn's `StandardScaler`.
 
-**Median imputation**
-
-Missing numerical values, where present, are handled using median imputation.
-
-**Standardisation**
-
-Numerical features are standardised using `StandardScaler`.
-
-For a feature \(x\), standardisation is performed as:
+For a feature value \(x\), standardisation is:
 
 \[
 z = \frac{x-\mu}{\sigma}
 \]
 
-where:
+where \(\mu\) and \(\sigma\) are estimated from the training data.
 
-- \(x\) is the original feature value.
-- \(\mu\) is the training-set mean.
-- \(\sigma\) is the training-set standard deviation.
-- \(z\) is the standardised feature value.
+The imputer and scaler are fitted **only on the training split**. The fitted transformations are then applied unchanged to the validation and test splits. This prevents information from those partitions from leaking into preprocessing.
 
-Both the imputer and scaler are fitted exclusively on the training set.
+The fitted preprocessing pipeline is saved as `artifacts/preprocessor.joblib`.
 
-The fitted preprocessing pipeline is subsequently applied to the validation and test sets without refitting.
+### 2. MLP teacher model
 
-This prevents information from the validation and test sets from leaking into the training process.
+The teacher is a scikit-learn `MLPClassifier` with two hidden layers.
 
-The fitted preprocessor is saved as:
-
-`artifacts/preprocessor.joblib`
-
-### 2. Training the MLP Teacher Model
-
-A Multi-Layer Perceptron classifier is used as the teacher model.
-
-The selected architecture contains two hidden layers:
+**Architecture**
 
 \[
 30 \rightarrow 16 \rightarrow 8 \rightarrow 1
 \]
 
-The final output dimensionality corresponds to the binary classification model's single output unit in scikit-learn's binary classification implementation.
+The final output dimension is one because scikit-learn uses a single output unit for this binary classification configuration.
 
-### Model configuration
-
-| Parameter | Configuration |
+| Parameter | Value |
 |---|---|
-| Model | `MLPClassifier` |
-| Hidden layers | (16, 8) |
-| Activation | ReLU |
-| Solver | Adam |
-| L2 regularisation (`alpha`) | 0.001 |
-| Initial learning rate | 0.001 |
-| Maximum iterations | 500 |
-| Random state | 42 |
+| Estimator | `MLPClassifier` |
+| Hidden-layer sizes | `(16, 8)` |
+| Activation | `relu` |
+| Solver | `adam` |
+| L2 regularisation (`alpha`) | `0.001` |
+| Initial learning rate | `0.001` |
+| Maximum iterations | `500` |
+| Random state | `42` |
+| Early stopping | `False` |
 
-The neural network learns nonlinear relationships between the 30 input features and the binary target.
+The trained MLP generates class predictions used by the rule-extraction process. Its fitted model is stored in `artifacts/mlp_model.joblib`.
 
-Once trained, it generates predictions and class probabilities for the training, validation, and test observations.
+### 3. Fuzzy membership functions
 
-The predictions are saved separately so that subsequent fuzzy extraction and evaluation experiments can use a consistent teacher output.
+Each of the 30 standardised numerical features is represented by three fuzzy terms:
 
-The trained model is stored at:
-
-`artifacts/mlp_model.joblib`
-
-### 3. Fuzzy Membership Functions
-
-The fuzzy representation converts numerical feature values into linguistic membership terms.
-
-Instead of assigning each feature a single crisp category, fuzzy membership functions assign degrees of membership between 0 and 1.
-
-For every numerical feature, the project defines three triangular membership terms:
-
-| Membership term | Interpretation |
+| Term | Interpretation |
 |---|---|
-| Low | Lower region of the feature's range |
-| Medium | Intermediate region |
-| High | Upper region |
+| `Low` | Lower part of the feature range |
+| `Medium` | Intermediate part of the feature range |
+| `High` | Upper part of the feature range |
 
-A triangular membership function can be represented as:
+The implementation uses triangular membership functions. Their parameters are derived from the **training-set minimum, median, and maximum** for each feature:
+
+- `Low`: \((\min,\min,\text{median})\)
+- `Medium`: \((\min,\text{median},\max)\)
+- `High`: \((\text{median},\max,\max)\)
+
+A triangular membership function is defined by:
 
 \[
 \mu(x;a,b,c)=
@@ -378,42 +232,35 @@ A triangular membership function can be represented as:
 \right)
 \]
 
-where:
+where \(a\), \(b\), and \(c\) define the triangle's left endpoint, peak, and right endpoint. The membership degree lies between 0 and 1.
 
-- \(a\) represents the left endpoint.
-- \(b\) represents the peak.
-- \(c\) represents the right endpoint.
-- \(x\) represents the input value.
-- \(\mu(x)\) represents the membership degree.
+The fitted definitions are saved in `artifacts/membership_functions.joblib`.
 
-The membership degree lies in the interval:
+### 4. Rule extraction
+
+For each training observation, the extractor:
+
+1. Evaluates the observation against the three membership terms for every feature.
+2. Selects the term with the highest membership degree for each feature.
+3. Uses the MLP's predicted class as the rule consequent.
+4. Calculates a rule weight from the selected membership degrees.
+5. Groups observations that produce identical antecedents.
+
+For feature \(j\), the selected term is:
 
 \[
-0 \leq \mu(x) \leq 1
+A_j = \arg\max_{t \in \{Low,Medium,High\}} \mu_{j,t}(x_j)
 \]
 
-A value close to 1 indicates strong membership in the corresponding fuzzy set, while a value close to 0 indicates weak membership.
+The rule weight is the product of the selected membership degrees across the 30 features:
 
-Membership functions are fitted using the training data only.
+\[
+w_r = \prod_{j=1}^{30}\mu_{j,A_j}(x_j)
+\]
 
-The implementation stores the fitted membership-function definitions and uses them to fuzzify observations consistently during extraction and inference.
+Ties between membership terms are resolved deterministically by selecting the alphabetically smallest term. Each observation initially contributes support of one; support is accumulated when identical rules are grouped.
 
-Saved artifact:
-
-`artifacts/membership_functions.joblib`
-
-### 4. Fuzzy Rule Extraction
-
-The rule extraction module converts observations and MLP predictions into candidate fuzzy rules.
-
-Each candidate rule contains:
-
-- An antecedent consisting of fuzzy feature conditions.
-- A consequent representing the predicted class.
-- A rule weight.
-- A support value.
-
-A rule follows the general structure:
+A rule has the general form:
 
 ```text
 IF feature_1 is Medium
@@ -424,286 +271,185 @@ AND feature_30 is Medium
 THEN class is Malignant
 ```
 
-For each feature, the strongest membership term is selected:
+The extraction process produces **290 initial rules** after identical antecedents are grouped and conflicts are resolved.
 
-\[
-A_j = \arg\max_{t \in \{Low,Medium,High\}}
-\mu_{j,t}(x_j)
-\]
+### 5. Conflict resolution
 
-where \(A_j\) is the selected fuzzy term for feature \(j\).
+Identical antecedents can be associated with different teacher-predicted classes. The extractor groups rules with the same antecedent and resolves the conflict by retaining the consequent with the **highest aggregate rule weight**.
 
-The selected terms form the rule antecedent.
+The support value records the number of observations contributing to the retained rule. Rule weight and support are preserved as metadata and used during ranking and pruning.
 
-The consequent is obtained from the MLP teacher's predicted class:
+### 6. Fuzzy inference
 
-\[
-C = f_{\theta}(x)
-\]
+The implementation is a **Mamdani-inspired fuzzy rule classifier**, not a complete conventional Mamdani fuzzy inference system. It uses:
 
-Thus, each observation contributes a candidate rule describing the fuzzy representation of its input and the teacher's predicted output.
+- Minimum t-norm for antecedent conjunction.
+- Maximum aggregation within each output class.
+- Winner-take-all classification across class activation scores.
 
-The extracted rules contain all 30 feature conditions in their antecedents.
-
-The initial extraction process produces **290 candidate rules**.
-
-### 5. Conflict Resolution
-
-Different observations may produce identical fuzzy antecedents but different predicted consequents.
-
-For example:
-
-```text
-Rule A:
-IF feature_1 is High
-AND feature_2 is Medium
-THEN class is Benign
-
-Rule B:
-IF feature_1 is High
-AND feature_2 is Medium
-THEN class is Malignant
-```
-
-Such conflicts must be resolved before constructing the final rule base.
-
-The implementation groups rules with identical antecedents and retains the consequent with the highest aggregate rule weight.
-
-This reduces contradictory rules while preserving the strongest aggregate evidence associated with each antecedent.
-
-Rule weights and support are retained as metadata and are subsequently useful for rule ranking and pruning.
-
-### 6. Fuzzy Inference
-
-The fuzzy inference engine evaluates the extracted rules against a new observation.
-
-The implementation uses a Mamdani-inspired fuzzy rule classifier: minimum t-norm for antecedent evaluation, maximum class-wise aggregation, and winner-take-all classification. It does not implement conventional Mamdani output-set aggregation or centroid defuzzification.
-
-The inference process consists of the following stages.
+It does **not** implement fuzzy output-set aggregation followed by centroid defuzzification. The consequents are categorical class labels.
 
 #### A. Fuzzification
 
-Each numerical input is evaluated against its corresponding membership functions.
+Each input feature is evaluated against its `Low`, `Medium`, and `High` membership functions.
 
-This produces membership degrees for the Low, Medium, and High fuzzy sets.
+#### B. Antecedent evaluation — minimum t-norm
 
-#### B. Antecedent evaluation: Minimum t-norm
-
-The conjunction of antecedent conditions is evaluated using the minimum t-norm.
-
-For a rule with \(n\) antecedents:
+For a rule with \(n\) antecedents, its firing strength is:
 
 \[
-\alpha_r =
-\min\left(
-\mu_{1}(x_1),
-\mu_{2}(x_2),
-\ldots,
-\mu_{n}(x_n)
-\right)
+\alpha_r = \min\left(\mu_1(x_1),\mu_2(x_2),\ldots,\mu_n(x_n)\right)
 \]
 
-Here, \(\alpha_r\) represents the rule's firing strength.
-
-The minimum operator ensures that the conjunction is determined by the weakest membership degree among the antecedents.
+The minimum operator makes the weakest antecedent membership degree determine the rule's firing strength.
 
 #### C. Class-wise maximum aggregation
 
-The strongest firing rule for each class is retained using maximum aggregation.
-
-For class \(c\):
+For each class \(c\), the inference engine retains the maximum firing strength among rules with that consequent:
 
 \[
 S_c = \max_{r:C_r=c}\alpha_r
 \]
 
-where:
+#### D. Winner-take-all decision
 
-- \(S_c\) is the aggregated activation for class \(c\).
-- \(C_r\) is the consequent of rule \(r\).
-- \(\alpha_r\) is the firing strength of rule \(r\).
-
-#### D. Winner-take-all classification
-
-The final class is selected using:
+The predicted class is the class with the highest aggregated activation:
 
 \[
 \hat{y} = \arg\max_c S_c
 \]
 
-The class with the highest aggregated activation becomes the predicted class.
+Ties are resolved using a deterministic class-order rule. If no rule fires, the configured fallback class is used and the event is recorded for coverage and fallback evaluation.
 
-A deterministic class-order rule is used to resolve ties.
+**Important implementation detail:** Rule weights and support do not scale firing strengths during inference. They are extraction metadata used for analysis, ranking, and pruning.
 
-If no rule matches an observation, the inference engine uses its configured fallback mechanism and records the event for coverage and fallback evaluation.
+### 7. Rule ranking and pruning
 
-**Implementation note:** Rule weights and support are retained for extraction metadata, analysis, ranking, and pruning. They do not multiply or otherwise scale the firing strength during inference. Also, because the consequents are categorical class labels, the implementation uses class-wise activation scores and winner-take-all classification rather than centroid defuzzification over a numerical output universe.
+The initial rule base contains 290 rules. Rules are ranked using extraction metadata, including weight and support. The following configurations are compared on the validation set:
 
-### 7. Rule Ranking and Pruning
+- All 290 rules
+- Top 10
+- Top 25
+- Top 50
+- Top 100
 
-The initial rule base contains 290 candidate rules.
+The comparison considers accuracy, macro-F1, fidelity, coverage, fallback rate, and rule-base size. A larger rule base does not necessarily improve every metric, so selection is based on validation evidence rather than rule count alone.
 
-A large rule base can become difficult to interpret and maintain. Pruning is therefore used to investigate whether a smaller collection of rules can preserve acceptable predictive behaviour.
+### 8. Rule ablation
 
-Rules are ranked using their extraction metadata, including rule weight and support.
+After selecting the top-100 configuration, an ablation experiment removes one rule at a time to study its effect. The original rule at index `0` is a broad all-`Medium` benign rule.
 
-Different top-\(k\) configurations are evaluated on the validation set.
+Removing this rule improves validation accuracy and macro-F1 while leaving coverage unchanged:
 
-The project investigates:
-
-- All extracted rules.
-- Top 10 rules.
-- Top 25 rules.
-- Top 50 rules.
-- Top 100 rules.
-
-The purpose is to understand how rule-base size affects:
-
-- Classification accuracy.
-- Macro-F1.
-- Fidelity to the MLP.
-- Coverage.
-- Fallback rate.
-- Rule-base complexity.
-
-The validation results show that simply increasing the number of rules does not guarantee an improvement in every metric.
-
-The selected configuration is therefore evaluated against explicit validation constraints rather than chosen solely by rule count.
-
-### 8. Rule Ablation
-
-After selecting the 100-rule configuration, an ablation experiment is performed to investigate the contribution of individual rules.
-
-Ablation evaluates the effect of removing a rule and measuring the resulting change in model behaviour.
-
-The investigation identifies the original rule at index 0 as a broad all-Medium benign rule.
-
-Its removal improves validation performance:
-
-| Validation metric | Top 100 rules | After removing rule 0 |
+| Validation metric | Top 100 rules | After removing Rule 0 |
 |---|---:|---:|
 | Accuracy | 80.00% | 87.06% |
 | Macro-F1 | 76.70% | 85.94% |
-| Malignant recall | — | 78.12% |
+| Malignant recall | 56.25% | 78.12% |
 | Coverage | 98.82% | 98.82% |
 
-Removing Rule 0 improves validation accuracy and macro-F1 while validation coverage remains unchanged at 98.82%. The final 99-rule model separately achieves 100% coverage on the held-out test set.
+The selected final rule base therefore contains **99 rules**: the selected top 100 with original Rule 0 removed. This decision is based on validation results; the test set is reserved for the final evaluation.
 
-The resulting 99-rule configuration is selected using validation evidence.
+### 9. Decision-tree surrogate
 
-The final test set is then used once for independent evaluation of the selected candidate.
+A decision-tree surrogate is also trained to imitate the MLP teacher. It provides a second interpretable baseline against which to compare the fuzzy rule classifier.
+
+The tree is selected using validation fidelity from combinations of:
+
+- `max_depth`: 2, 3, 4, 5, 6, 8, 10
+- `min_samples_leaf`: 2, 5, 10, 15
+
+The selected configuration has `max_depth=3` and `min_samples_leaf=5`. It has six leaves and uses four features. It is trained to reproduce teacher predictions, so its fidelity measures agreement with the MLP rather than accuracy against ground-truth labels.
 
 ---
 
-## Experimental Design
+## System workflow
 
-The experiments investigate how different design choices affect the performance and complexity of the fuzzy surrogate.
+The main experimental flow is:
 
-All model-selection decisions are based on the validation set.
+```mermaid
+flowchart TD
+    A[UCI Breast Cancer Wisconsin dataset] --> B[Stratified train / validation / test split]
+    B --> C[Fit imputer and scaler on training data]
+    C --> D[Train MLP teacher]
+    D --> E[Generate teacher predictions]
+    C --> F[Fit fuzzy membership functions]
+    E --> G[Extract candidate fuzzy rules]
+    F --> G
+    G --> H[Resolve antecedent conflicts]
+    H --> I[Rank and prune rules]
+    I --> J[Validation-based Rule 0 ablation]
+    J --> K[Final 99-rule fuzzy classifier]
+    K --> L[Held-out test evaluation]
+    D --> L
+    D --> M[Train and evaluate decision-tree surrogate]
+    M --> L
+```
 
-The final test set is reserved for evaluating the selected model.
+---
 
-### Experiments conducted
+## Experimental design
 
-| Experiment | Purpose |
+The experiments examine the effects of rule-base size, rule selection, antecedent length, and inference operators.
+
+| Experiment | Question |
 |---|---|
-| Rule pruning | Study the effect of different rule-base sizes |
-| Antecedent reduction | Investigate the effect of using fewer input features per rule |
-| Class-aware pruning | Examine whether class-sensitive selection improves minority-class performance |
-| Threshold experiments | Investigate alternative rule-selection thresholds |
-| T-norm comparison | Compare minimum and product antecedent conjunction |
-| Rule ablation | Identify the contribution of individual rules |
-| False-negative analysis | Investigate missed malignant observations |
-| Firing-strength diagnostics | Examine rule activation behaviour and inference bottlenecks |
-| Final evaluation | Evaluate the selected 99-rule model on the held-out test set |
+| Rule-count pruning | How does the number of retained rules affect performance and fidelity? |
+| Antecedent reduction | Can rules use fewer feature conditions while retaining useful behaviour? |
+| Class-aware pruning | Does class-sensitive rule selection help minority-class performance? |
+| Threshold experiments | How do alternative selection thresholds affect the results? |
+| T-norm comparison | How do minimum and product conjunction differ? |
+| Rule ablation | What changes when an individual rule is removed? |
+| False-negative analysis | Which observations are missed, and how do rules behave for them? |
+| Firing diagnostics | How do rule activations contribute to inference behaviour? |
+| Decision-tree comparison | How does a tree surrogate compare with the fuzzy surrogate? |
 
-**Experimental provenance:** The class-aware pruning, threshold, antecedent-reduction, and feature-importance result files are preserved in `results/`. However, the corresponding generation code for these exploratory analyses is not available in the current repository history. Their CSVs should be treated as recorded exploratory results, not as fully reproducible experiments. The core MLP training, rule extraction, pruning, inference, and final evaluation pipeline is documented separately.
-
-### Antecedent reduction
-
-An additional experiment investigates whether rules can be made shorter by reducing the number of feature conditions.
-
-The preserved experiment results compare configurations using 5, 10, 15, 20, and 30 antecedents per rule.
-
-The available results indicate that the 20-feature configuration provides a compact alternative, while the 30-feature configuration is retained as the final predictive baseline.
-
-**Provenance note:** The result file is present, but the implementation used to generate the feature ranking and select the subsets is not available in the current repository history. The feature-selection procedure and its reported results should therefore be treated as exploratory rather than fully reproducible.
-
-These results suggest that reducing rule length does not necessarily improve the surrogate's fidelity or classification performance.
-
-### Inference operator comparison
-
-Minimum and product t-norms are investigated as alternative methods of evaluating fuzzy conjunction.
-
-The minimum t-norm is selected for the final model.
-
-This makes the inference procedure consistent with the final implementation and its associated evaluation results.
+The minimum t-norm is retained in the final fuzzy model. In the tested configurations, removing Rule 0 had a larger effect on validation performance than switching between the minimum and product t-norms. This is an observation about these experiments, not a general claim that the choice of conjunction operator is unimportant.
 
 ---
 
-## Evaluation Metrics
+## Evaluation metrics
 
-The fuzzy surrogate is evaluated using multiple metrics because predictive accuracy alone does not fully describe the quality of an extracted model.
+The project uses multiple metrics because no single measure captures both predictive performance and imitation quality.
 
-### 1. Classification Accuracy
+| Metric | Meaning |
+|---|---|
+| Accuracy | Fraction of observations correctly classified against ground truth |
+| Precision | Fraction of predicted positive observations that are truly positive |
+| Recall | Fraction of actual positive observations correctly identified |
+| F1-score | Harmonic mean of precision and recall |
+| Macro-F1 | Unweighted mean of the per-class F1-scores |
+| Fidelity | Fraction of observations on which the surrogate agrees with the MLP teacher |
+| Coverage | Fraction of observations for which at least one rule fires |
+| Fallback rate | Fraction of observations classified using the fallback mechanism |
+| Rule count | Number of retained rules |
+| Rule length | Number of antecedent conditions per rule |
 
-Accuracy measures the proportion of correctly classified observations:
+For binary classification:
 
 \[
 Accuracy = \frac{TP+TN}{TP+TN+FP+FN}
 \]
 
-### 2. Precision
-
-Precision measures the proportion of predicted positive observations that are actually positive:
-
 \[
 Precision = \frac{TP}{TP+FP}
-\]
-
-### 3. Recall
-
-Recall measures the proportion of actual positive observations correctly identified:
-
-\[
+\qquad
 Recall = \frac{TP}{TP+FN}
 \]
 
-### 4. F1-score
-
-The F1-score is the harmonic mean of precision and recall:
-
 \[
-F1 = 2\cdot
-\frac{Precision \cdot Recall}
-{Precision+Recall}
+F1 = 2\cdot\frac{Precision\cdot Recall}{Precision+Recall}
 \]
 
-### 5. Macro-F1
-
-Macro-F1 calculates the F1-score independently for each class and takes their unweighted average.
-
-It is particularly useful for evaluating performance when class distributions are unequal.
-
-### 6. Model Fidelity
-
-Fidelity measures how frequently the fuzzy surrogate agrees with the MLP teacher:
+Fidelity is calculated against teacher predictions:
 
 \[
 Fidelity =
-\frac{
-\sum_{i=1}^{N}
-\mathbb{1}[g_{\phi}(x_i)=f_{\theta}(x_i)]
-}{N}
+\frac{1}{N}\sum_{i=1}^{N}
+\mathbb{1}\left[g_\phi(x_i)=f_\theta(x_i)\right]
 \]
 
-A higher fidelity indicates that the fuzzy model more closely reproduces the teacher's predictions.
-
-Fidelity is distinct from accuracy: a surrogate can agree with the teacher while both models make an incorrect prediction against the ground truth.
-
-### 7. Coverage
-
-Coverage measures the proportion of observations for which at least one fuzzy rule fires.
+Coverage is:
 
 \[
 Coverage =
@@ -711,62 +457,52 @@ Coverage =
 {\text{Total observations}}
 \]
 
-### 8. Fallback Rate
-
-Fallback rate measures the proportion of observations for which no extracted rule fires and the configured fallback mechanism is used.
-
-### 9. Rule-base Complexity
-
-The project also tracks:
-
-- Total number of rules.
-- Mean rule length.
-- Number of antecedents per rule.
-
-These measurements provide a basic indication of the complexity of the extracted fuzzy model.
+A high fidelity score means that the surrogate imitates the teacher more closely. It does not necessarily mean that the surrogate is more accurate against the ground-truth labels.
 
 ---
 
-## Results and Analysis
+## Results
 
-### Final model performance
+All final comparison metrics below are measured on the **held-out test set of 86 observations**.
 
-The final fuzzy surrogate contains 99 rules.
-
-Its performance is evaluated on the held-out test set of 86 observations.
+### Final fuzzy model
 
 <details>
-<summary>Final fuzzy surrogate: test results</summary>
+<summary><strong>Final 99-rule fuzzy surrogate — test metrics</strong></summary>
 
 | Metric | Result |
 |---|---:|
-| Accuracy | 0.8837 |
-| Macro-F1 | 0.8699 |
-| Fidelity to MLP | 0.8721 |
-| Coverage | 1.0000 |
-| Fallback rate | 0.0000 |
+| Accuracy | 88.37% |
+| Macro-F1 | 86.99% |
+| Fidelity to MLP | 87.21% |
+| Malignant precision | 92.31% |
+| Malignant recall | 75.00% |
+| Coverage | 100.00% |
+| Fallback rate | 0.00% |
+| Number of rules | 99 |
 | Mean rule length | 30 |
 
 </details>
 
-### Comparison with the MLP teacher
+### Comparison with other models
 
-| Metric | MLP teacher | Fuzzy surrogate | Decision-tree surrogate |
+| Test metric | MLP teacher | Fuzzy surrogate | Decision-tree surrogate |
 |---|---:|---:|---:|
-| Test accuracy | 98.84% | 88.37% | 93.02% |
-| Test macro-F1 | 98.75% | 86.99% | 92.20% |
-| Fidelity to teacher | 100.00%* | 87.21% | 94.19% |
-| Coverage | N/A | 100% | N/A |
+| Accuracy | **98.84%** | 88.37% | 93.02% |
+| Macro-F1 | **98.75%** | 86.99% | 92.20% |
+| Fidelity to MLP | 100.00%* | 87.21% | **94.19%** |
+| Coverage | N/A | 100.00% | N/A |
 
-The MLP teacher achieves the highest predictive performance. The decision-tree surrogate outperforms the fuzzy surrogate on test accuracy, macro-F1, and fidelity to the teacher.
+- The MLP teacher has the highest test accuracy and macro-F1.
+- The decision-tree surrogate outperforms the fuzzy surrogate on test accuracy, macro-F1, and fidelity.
+- The fuzzy model provides a different form of representation: a collection of linguistic IF–THEN rules whose firing behaviour can be inspected.
+- The MLP's `100%` fidelity is a self-comparison against its own predictions, not an independent surrogate result.
 
-The fuzzy surrogate nevertheless provides a distinct representation through linguistic fuzzy IF–THEN rules, which can be inspected along with their firing behaviour.
+### Confusion matrices
 
-*The MLP's 100% fidelity is a self-comparison: it is the teacher model being compared with its own predictions, not an independent surrogate result.*
+Rows are actual classes and columns are predicted classes. Class `0` is benign; class `1` is malignant.
 
-### Confusion matrix
-
-The final fuzzy model produces the following test confusion matrix, using benign as class 0 and malignant as class 1:
+**Fuzzy surrogate**
 
 \[
 \begin{bmatrix}
@@ -780,62 +516,64 @@ The final fuzzy model produces the following test confusion matrix, using benign
 | Benign | 52 | 2 |
 | Malignant | 8 | 24 |
 
-For malignant observations:
+**MLP teacher**
 
-- Precision: 92.31%
-- Recall: 75.00%
-- F1-score: 82.76%
+\[
+\begin{bmatrix}
+54 & 0\\
+1 & 31
+\end{bmatrix}
+\]
 
-The model correctly identifies 24 of the 32 malignant observations in the test set.
+**Decision-tree surrogate**
 
-### Interpretation of results
+\[
+\begin{bmatrix}
+54 & 0\\
+6 & 26
+\end{bmatrix}
+\]
 
-The final fuzzy system achieves 88.37% test accuracy and 87.21% fidelity to the MLP.
+The fuzzy surrogate correctly identifies 24 of the 32 malignant test observations. It produces eight false negatives and two false positives. This is an important limitation of the final model.
 
-These results indicate that the extracted rule base captures a substantial portion of the teacher's classification behaviour, but does not reproduce it completely.
+### Rule ablation findings
 
-The 100% test coverage indicates that every test observation activates at least one retained fuzzy rule. The zero fallback rate means that no test prediction depends on the fallback mechanism.
+On the validation set, removing Rule 0 changes the number of correct predictions from 68 to 74. Seven previously incorrect predictions become correct, while one previously correct prediction becomes incorrect. Coverage remains at 98.82%.
 
-The confusion matrix also shows that the surrogate makes more false-negative predictions than false-positive predictions. This is an important limitation when considering the behaviour of the model on the malignant class.
+The final 99-rule model subsequently achieves 100% coverage on the held-out test set. Validation and test coverage are separate measurements and should not be conflated.
 
-The results should be interpreted in the context of the relatively small test set and the single random seed used in this experiment.
+### Result files
 
-### Experimental result files
+Detailed outputs are stored in `results/`. The principal files include:
 
-Detailed results are preserved in the `results/` directory:
-
-| File | Description |
+| File | Contents |
 |---|---|
 | `metrics.csv` | Consolidated experiment metrics |
-| `mlp_metrics.json` | Teacher-model evaluation metrics |
-| `pruning_validation.csv` | Rule-count pruning experiments |
-| `antecedent_reduction_validation.csv` | Feature-count reduction experiments |
-| `class_aware_pruning_validation.csv` | Class-aware pruning experiments |
-| `threshold_validation.csv` | Rule-selection threshold experiments |
-| `activation_diagnostic.csv` | Activation-related diagnostics |
-| `feature_importance.csv` | Feature importance results |
+| `metrics_summary.csv` | Metrics summary |
+| `mlp_metrics.json` | MLP teacher metrics |
+| `pruning_validation.csv` | Rule-count pruning results |
+| `antecedent_reduction_validation.csv` | Antecedent-reduction results |
+| `class_aware_pruning_validation.csv` | Class-aware pruning results |
+| `threshold_validation.csv` | Threshold experiment results |
+| `activation_diagnostic.csv` | Activation diagnostics |
+| `feature_importance.csv` | Preserved feature-importance results |
 | `false_negative_rule_details.csv` | Rule-level false-negative analysis |
-| `false_negative_rule_summary.csv` | Summary of false-negative analysis |
+| `false_negative_rule_summary.csv` | False-negative analysis summary |
 | `remaining_false_negatives.csv` | Remaining false-negative observations |
-| `rule_0_ablation_changes.csv` | Changes resulting from rule ablation |
-| `final_candidate_test_predictions.csv` | Final fuzzy model test predictions |
-| `decision_tree_validation.csv` | Decision-tree surrogate validation results |
-| `decision_tree_test_predictions.csv` | Decision-tree surrogate test predictions |
-| `model_comparison_test.csv` | Held-out test comparison of MLP, fuzzy, and decision-tree models |
-| `metrics_summary.csv` | Consolidated metrics summary |
+| `rule_0_ablation_changes.csv` | Prediction changes from Rule 0 ablation |
+| `final_candidate_test_predictions.csv` | Final fuzzy-model test predictions |
+| `decision_tree_validation.csv` | Decision-tree validation results |
+| `decision_tree_test_predictions.csv` | Decision-tree test predictions |
+| `model_comparison_test.csv` | Held-out comparison of the three models |
 | `reproducibility_manifest.json` | Experiment and file-hash metadata |
 
 ---
 
-## Interpretability and Explainability
+## Interpretability
 
-The central motivation of this project is to provide a more understandable representation of a neural network's classification behaviour.
+The fuzzy surrogate expresses its predictions through linguistic conditions rather than the MLP's learned numerical weights.
 
-The MLP operates through learned numerical weights and nonlinear transformations across hidden layers.
-
-The fuzzy surrogate expresses its decisions through rules containing linguistic conditions.
-
-For example, a rule can be represented as:
+A rule has the general form:
 
 ```text
 IF feature_1 is High
@@ -845,28 +583,25 @@ AND feature_3 is Low
 THEN class is Malignant
 ```
 
-This representation makes it possible to inspect:
+The implementation makes it possible to inspect:
 
-- Which fuzzy conditions appear in a rule.
-- Which class a rule predicts.
-- The rule's weight and support metadata.
-- The strength with which a rule fires for an observation.
-- Which rules contribute to the final class activation.
-- How pruning or ablation changes the rule base.
+- The antecedent conditions and predicted class of each rule.
+- Rule weight and support metadata.
+- The firing strength of a rule for a particular observation.
+- Which rules contribute to each class activation.
+- The effects of pruning and ablation.
+- The inference audit trace, including fired rules, antecedent strengths, firing strengths, and consequents.
 
-The inference implementation also produces an audit trace containing information about fired rules, antecedent strengths, firing strengths, and consequents.
-
-This allows individual predictions to be examined at the rule level.
-
-**Important:** The extracted rules are an approximation of the teacher's behaviour. They should not be interpreted as a complete or exact explanation of the MLP's internal computations.
+**Interpretability caveat:** The final rule base contains 99 rules, and each rule contains 30 antecedent conditions. The rules are inspectable, but they are not necessarily short or easy to interpret individually. They approximate the teacher's behaviour; they are not exact explanations of the MLP's internal computations.
 
 ---
 
-## Repository Structure
+## Repository structure
+
+The main repository layout is:
 
 ```text
 fuzzy-rule-extraction/
-│
 ├── artifacts/
 │   ├── final_model_metadata.json
 │   ├── final_rules_top99.joblib
@@ -875,11 +610,9 @@ fuzzy-rule-extraction/
 │   ├── preprocessor.joblib
 │   ├── selection_metadata.json
 │   └── feature_metadata.json
-│
 ├── data/
 │   ├── raw/
 │   └── processed/
-│
 ├── results/
 │   ├── metrics.csv
 │   ├── metrics_summary.csv
@@ -902,7 +635,6 @@ fuzzy-rule-extraction/
 │   ├── decision_tree_test_predictions.csv
 │   ├── model_comparison_test.csv
 │   └── reproducibility_manifest.json
-│
 ├── src/
 │   ├── data_pipeline.py
 │   ├── train_mlp.py
@@ -929,7 +661,6 @@ fuzzy-rule-extraction/
 │   ├── compare_competing_antecedents.py
 │   ├── inspect_competing_rules.py
 │   └── test_rule_ablation.py
-│
 ├── tests/
 │   ├── test_analyze_results.py
 │   ├── test_evaluate.py
@@ -942,65 +673,64 @@ fuzzy-rule-extraction/
 │   ├── test_rule_types.py
 │   ├── test_run_experiments.py
 │   └── test_visualize_results.py
-│
 ├── report/
 ├── presentation/
 ├── config.yaml
 ├── requirements.txt
 ├── .gitignore
 └── README.md
-### Important artifacts
+```
+
+Some generated data and result files may be omitted from a fresh clone or excluded by `.gitignore`; consult the repository for the artifacts actually tracked in version control.
+
+### Key saved artifacts
 
 | Artifact | Purpose |
 |---|---|
-| `mlp_model.joblib` | Trained neural network teacher |
-| `preprocessor.joblib` | Fitted preprocessing pipeline |
+| `mlp_model.joblib` | Trained MLP teacher |
+| `preprocessor.joblib` | Fitted imputation and scaling pipeline |
 | `membership_functions.joblib` | Fitted fuzzy membership functions |
 | `final_rules_top99.joblib` | Final 99-rule fuzzy model |
 | `final_model_metadata.json` | Final model configuration and evaluation metadata |
-| `selection_metadata.json` | Validation-based model selection details |
+| `selection_metadata.json` | Validation-based selection details |
 | `feature_metadata.json` | Dataset, feature, and split metadata |
 
 ---
 
-## Installation and Setup
+## Getting started
 
 ### Prerequisites
 
 - Python 3.10 or later
 - Git
-- pip
+- `pip`
 
-The project was developed and tested using Python 3.12.3.
+The project was developed and tested with Python 3.12.3.
 
 ### 1. Clone the repository
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/manasvi2909/fuzzy-rule-extraction.git
 cd fuzzy-rule-extraction
 ```
 
 ### 2. Create a virtual environment
 
+**macOS / Linux**
+
 ```bash
 python3 -m venv .venv
-```
-
-### 3. Activate the environment
-
-macOS / Linux:
-
-```bash
 source .venv/bin/activate
 ```
 
-Windows:
+**Windows (PowerShell)**
 
 ```powershell
-.venv\Scripts\activate
+py -m venv .venv
+.venv\Scripts\Activate.ps1
 ```
 
-### 4. Install dependencies
+### 3. Install dependencies
 
 ```bash
 python -m pip install --upgrade pip
@@ -1009,121 +739,119 @@ python -m pip install -r requirements.txt
 
 ---
 
-## Running the Project
+## Running the project
 
-The project is implemented as modular Python components. The saved artifacts are available in `artifacts/`, while experimental outputs are stored in `results/`.
+Run commands from the repository root.
 
-### Core command-line stages
+### Core data and teacher-model stages
 
-Run these commands from the repository root, in order:
+The following command-line stages prepare the dataset and generate the teacher model and its predictions:
 
 ```bash
-# 1. Download the dataset, create stratified splits and preprocess the data
+# 1. Download/load the dataset, create stratified splits, and preprocess
 python -m src.data_pipeline
 
-# 2. Train the MLP teacher using the training split
+# 2. Train the MLP teacher
 python -m src.train_mlp
 
-# 3. Export MLP predictions for the train, validation and test splits
+# 3. Generate teacher predictions for the data splits
 python -m src.predict
 ```
 
-**Note:** These commands regenerate data, model artifacts and prediction files. They can overwrite existing outputs.
+These stages can regenerate data, model artifacts, and prediction files. They may overwrite existing outputs. The initial dataset preparation may require an internet connection if the raw dataset is not already available locally.
 
-### Fuzzy rule extraction and evaluation
+### Fuzzy extraction and evaluation modules
 
-The fuzzy pipeline is implemented through reusable Python functions rather than a single command-line entry point.
+The fuzzy pipeline is exposed through reusable Python functions and modules. The repository does not currently provide one command that orchestrates every stage from raw data through final evaluation.
 
-| Module | Main function | Purpose |
+| Module | Function / entry point | Purpose |
 |---|---|---|
-| `src/membership.py` | `fit_membership_functions()` | Fits Low, Medium and High membership functions using training data |
-| `src/membership.py` | `fuzzify_dataframe()` | Converts observations into fuzzy membership degrees |
-| `src/extract_rules.py` | `extract_rules()` | Generates and resolves fuzzy rules using MLP predictions |
-| `src/prune_rules.py` | `prune_rules()` | Ranks and selects the top-N rules |
-| `src/fuzzy_inference.py` | `predict_dataset()` | Predicts observations using the fuzzy rule base |
-| `src/run_experiments.py` | `run_rule_experiments()` | Evaluates full and pruned rule bases |
-| `src/evaluate_final_candidate.py` | Script | Evaluates the final 99-rule candidate using saved intermediate artifacts |
+| `src/membership.py` | `fit_membership_functions()` | Fit membership functions using training data |
+| `src/membership.py` | `fuzzify_dataframe()` | Convert observations into membership degrees |
+| `src/extract_rules.py` | `extract_rules()` | Extract and resolve fuzzy rules using teacher predictions |
+| `src/prune_rules.py` | `prune_rules()` | Rank and select the top-N rules |
+| `src/fuzzy_inference.py` | `predict_dataset()` | Predict using a fuzzy rule base |
+| `src/run_experiments.py` | `run_rule_experiments()` | Evaluate full and pruned rule bases |
+| `src/evaluate_final_candidate.py` | Script | Evaluate the final 99-rule candidate using saved intermediate artifacts |
 
-The final evaluation script expects the processed test data, MLP test predictions, membership functions and selected top-100 rules to be available. It removes original Rule #0 before evaluating the final candidate.
+The final evaluation script expects the processed test data, MLP test predictions, membership functions, and selected top-100 rules to be available. It removes original Rule 0 before evaluating the final candidate.
 
-**Reproduction note:** The repository does not currently provide a single end-to-end command that connects every training, extraction, pruning and evaluation stage. The saved final artifacts can be inspected independently, but regenerating the complete experiment requires executing the function-based stages in sequence.
+For the exact function arguments and configuration used in the experiments, refer to the corresponding source modules and `config.yaml`.
+
+---
 
 ## Testing
 
-The repository includes an automated test suite covering the main components of the project.
-
-Run all tests from the repository root:
+Run the automated test suite from the repository root:
 
 ```bash
 pytest -v
 ```
 
-The current implementation has **89 passing tests**.
+The project test run recorded **89 passing tests**.
 
 The tests cover:
 
-- Membership function behaviour and parameter validation.
+- Membership-function behaviour and parameter validation.
 - Fuzzification of individual observations and datasets.
-- Candidate rule generation.
-- Conflict resolution.
+- Candidate rule generation and conflict resolution.
 - Rule data structures and validation.
-- Minimum t-norm inference.
-- Maximum aggregation.
-- Class prediction and tie handling.
-- Fallback behaviour and coverage.
+- Minimum t-norm inference and maximum aggregation.
+- Class prediction, tie handling, fallback behaviour, and coverage.
 - Rule ranking and pruning.
 - Evaluation metrics.
 - Experiment configuration validation.
 - Reproducibility metadata and file hashing.
 - Result-table generation and visualisation utilities.
 
-The test suite is intended to verify both individual components and their expected interfaces.
+---
+
+## Saved artifacts and results
+
+The repository separates fitted artifacts from experiment outputs:
+
+- `artifacts/` contains serialized models, membership functions, final rules, and metadata.
+- `results/` contains evaluation metrics, prediction exports, diagnostics, and experiment result tables.
+- `report/` and `presentation/` contain the project documentation and presentation materials, where tracked.
+
+The `.joblib` files are Python object serializations. Load only artifacts from sources you trust.
 
 ---
 
-## Reproducibility
+## Reproducibility and experimental provenance
 
-Reproducibility is an important part of the experimental workflow.
+The core pipeline uses random seed `42` for the dataset split and MLP configuration. The repository preserves:
 
-The project uses a fixed random seed of 42 for the dataset split and model configuration.
-
-The following information is preserved:
-
-- Dataset and split metadata.
-- Feature ordering and class mapping.
-- Preprocessing configuration.
+- Dataset split and feature metadata.
+- Preprocessing configuration and fitted artifacts.
 - MLP architecture and hyperparameters.
 - Fuzzy membership-function definitions.
-- Rule-selection configuration.
-- Inference method.
-- Evaluation metrics.
-- Input-file hashes.
-- Package versions.
-- Experiment parameters.
+- Rule-selection metadata.
+- Inference configuration.
+- Evaluation metrics and prediction exports.
+- Selected input-file hashes, package versions, and experiment parameters.
 
-The reproducibility manifest is stored at:
+The manifest is stored at `results/reproducibility_manifest.json`.
 
-`results/reproducibility_manifest.json`
+**Reproducibility scope:** The manifest supports traceability and change detection; it does not guarantee that every exploratory result can be regenerated. The core training, extraction, pruning, inference, and final evaluation stages are documented in the source modules, but they are not currently connected by a single end-to-end command.
 
-It records selected experiment inputs, file hashes, environment details, and configuration metadata. This supports change detection, but does not by itself guarantee complete reproduction of every exploratory experiment.
+The result files for antecedent reduction, class-aware pruning, threshold experiments, and feature importance are preserved in `results/`. Their original generation code is not available in the current repository history. Treat these files as recorded exploratory results rather than fully reproducible experiments. The corresponding results should not be interpreted as independently regenerated by the documented core pipeline.
 
-The final model metadata also records the validation-based selection process and confirms that the test set was not used for model selection.
-
-The saved model artifacts allow the final fuzzy system to be inspected without retraining the teacher model.
+The saved final artifacts can be inspected without retraining the MLP. Exact regeneration of the full experiment requires the appropriate intermediate artifacts and execution of the documented stages in sequence.
 
 ---
 
-## Technologies Used
+## Technology stack
 
-| Technology | Application |
+| Technology | Role |
 |---|---|
 | Python | Core implementation |
 | NumPy | Numerical computation |
-| Pandas | Dataset manipulation and experiment results |
-| scikit-learn | Preprocessing, MLP training, and evaluation |
+| Pandas | Dataset handling and result analysis |
+| scikit-learn | Preprocessing, MLP, decision tree, and evaluation |
 | Joblib | Model and artifact serialization |
 | Matplotlib | Result visualisation |
-| PyYAML | Experiment configuration |
+| PyYAML | Configuration loading |
 | Pytest | Automated testing |
 | Git and GitHub | Version control and collaboration |
 
@@ -1131,77 +859,44 @@ The saved model artifacts allow the final fuzzy system to be inspected without r
 
 ## Limitations
 
-Although the project demonstrates the feasibility of extracting a fuzzy surrogate from a trained neural network, several limitations remain.
-
-### 1. Approximation rather than equivalence
-
-The fuzzy system approximates the teacher's classification behaviour. It does not reproduce the MLP's internal representations or guarantee identical predictions.
-
-### 2. Predictive performance trade-off
-
-The final fuzzy surrogate achieves 88.37% test accuracy compared with 98.84% for the MLP teacher.
-
-The reduction in predictive performance illustrates the trade-off involved in replacing a more flexible model with a finite rule base.
-
-### 3. Rule length
-
-The final model contains 99 rules, each with 30 antecedent conditions.
-
-Although the number of rules is reduced, the resulting rules are still relatively long. This limits their immediate interpretability.
-
-### 4. Dataset size
-
-The dataset contains 569 observations, with only 86 observations in the held-out test set.
-
-Consequently, the reported test metrics should be interpreted with appropriate caution.
-
-### 5. Single random seed
-
-The final experiment uses a fixed random seed of 42. Results may vary under different data partitions and training initialisations.
-
-### 6. Domain limitations
-
-The dataset is used as a machine-learning benchmark. The resulting model has not undergone clinical validation and must not be used as a medical diagnostic system.
+1. **Approximation, not equivalence.** The fuzzy surrogate imitates the teacher's predictions but does not reproduce the MLP's internal representations or guarantee identical outputs.
+2. **Predictive-performance trade-off.** The fuzzy surrogate achieves 88.37% test accuracy, compared with 98.84% for the MLP teacher.
+3. **Long rules.** The final model has 99 rules, each with 30 antecedent conditions. Reducing the rule count does not automatically make each rule concise.
+4. **Limited test sample.** The held-out test set contains 86 observations, so individual predictions have a noticeable effect on reported metrics.
+5. **Single random seed.** The reported results use seed 42. Performance and rule selection may vary with other data splits and training initialisations.
+6. **Exploratory-result provenance.** Some exploratory result CSVs are retained without the scripts that originally generated them.
+7. **No clinical validation.** The dataset is used as a machine-learning benchmark. The resulting models have not been clinically validated.
 
 ---
 
-## Future Improvements
+## Future work
 
-Several extensions could improve the performance and interpretability of the current framework.
+Potential extensions include:
 
-- **Antecedent simplification:** Reduce the number of feature conditions in individual rules while preserving predictive performance.
-- **Advanced rule extraction:** Investigate alternative approaches for generating rules from neural-network predictions.
-- **Rule merging:** Identify similar rules and combine them where appropriate.
-- **Improved pruning:** Explore optimisation methods that jointly consider predictive performance, fidelity, coverage, and complexity.
-- **Alternative membership functions:** Investigate Gaussian, trapezoidal, and adaptive membership functions.
-- **Multi-seed evaluation:** Repeat experiments across multiple random seeds to assess stability.
-- **Additional datasets:** Evaluate the extraction framework on other structured classification problems.
-- **Improved interpretability evaluation:** Introduce measures of rule redundancy, comprehensibility, and feature-level explanation quality.
-- **Inference optimisation:** Investigate alternative aggregation and decision mechanisms.
+- **Antecedent simplification:** Reduce the number of conditions per rule while retaining useful predictive behaviour.
+- **Alternative extraction methods:** Explore rule-generation approaches beyond strongest-membership discretisation.
+- **Rule merging:** Identify similar rules and combine them where this does not damage performance.
+- **Joint pruning objectives:** Optimise predictive performance, teacher fidelity, coverage, and complexity together.
+- **Alternative membership functions:** Evaluate Gaussian, trapezoidal, and adaptive membership functions.
+- **Multi-seed evaluation:** Measure stability across multiple random splits and training initialisations.
+- **Additional datasets:** Test the extraction framework on other structured classification problems.
+- **Interpretability evaluation:** Measure rule redundancy, comprehensibility, and feature-level explanation quality.
+- **Inference improvements:** Investigate alternative aggregation and decision mechanisms.
 
 ---
 
 ## Disclaimer
 
-This project is an academic investigation into interpretable machine learning and fuzzy rule extraction.
+This repository is an academic investigation into interpretable machine learning and fuzzy rule extraction. The Breast Cancer Wisconsin (Diagnostic) dataset is used for experimental classification only.
 
-The Breast Cancer Wisconsin dataset is used for experimental classification. The extracted fuzzy system is a research prototype and is not a clinically validated diagnostic tool.
+**Neither the MLP nor the extracted fuzzy surrogate is a clinically validated diagnostic system. The models must not be used to diagnose, screen, or guide medical treatment.**
 
 ---
 
-## Project Summary
+## Project summary
 
-**Opening the Black Box: Extracting Fuzzy Rules from Trained Neural Networks** explores how a trained neural network's classification behaviour can be approximated using a fuzzy rule-based surrogate.
+This project demonstrates an experimental pipeline for approximating a neural network's classification behaviour using fuzzy IF–THEN rules. The final fuzzy surrogate contains **99 rules** and achieves **88.37% test accuracy**, **86.99% test macro-F1**, **87.21% fidelity**, and **100% test coverage**.
 
-The project implements a complete experimental workflow involving neural network training, fuzzy membership functions, rule extraction, conflict resolution, inference, pruning, ablation, and evaluation.
+The MLP remains the strongest predictor in the comparison, while the decision-tree surrogate outperforms the fuzzy surrogate on the reported test metrics. The main contribution of the fuzzy approach is its rule-based representation and the ability to inspect rule activations—not a claim that it is the most accurate model.
 
-The final system contains 99 fuzzy rules and achieves:
-
-- 88.37% test accuracy.
-- 86.99% test macro-F1.
-- 87.21% fidelity to the MLP teacher.
-- 100% test coverage.
-
-The work demonstrates both the potential and the limitations of using fuzzy rule systems to make neural-network behaviour more accessible and interpretable.
-
-**The central objective is not simply to build another classifier, but to investigate how predictive behaviour can be translated into an inspectable collection of fuzzy IF–THEN rules.**
+**The central question is not simply whether a smaller model can classify the data, but how the behaviour of a trained neural network can be translated into an inspectable collection of fuzzy rules.**
