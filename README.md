@@ -86,13 +86,13 @@ The project investigates the following question:
 
 **Can the classification behaviour of a trained neural network be approximated using a fuzzy rule-based system while retaining useful predictive performance and providing a more inspectable representation?**
 
-Given a trained teacher \(f_\theta\), the objective is to construct a fuzzy surrogate \(g_\phi\) such that:
+Given a trained teacher $f_\theta$, the objective is to construct a fuzzy surrogate $g_\phi$ such that:
 
-\[
+$$
 g_\phi(x) \approx f_\theta(x)
-\]
+$$
 
-Here, \(x\) is an input observation, \(f_\theta\) is the trained MLP, and \(g_\phi\) is the fuzzy classifier.
+Here, $x$ is an input observation, $f_\theta$ is the trained MLP, and $g_\phi$ is the fuzzy classifier.
 
 The goal is to approximate the teacher's observable predictions—not to reconstruct its internal weights, hidden representations, or exact computational process.
 
@@ -166,13 +166,13 @@ The preprocessing pipeline consists of:
 1. **Median imputation** for missing numerical values, where present.
 2. **Standardisation** using scikit-learn's `StandardScaler`.
 
-For a feature value \(x\), standardisation is:
+For a feature value $x$, standardisation is:
 
-\[
+$$
 z = \frac{x-\mu}{\sigma}
-\]
+$$
 
-where \(\mu\) and \(\sigma\) are estimated from the training data.
+where $\mu$ and $\sigma$ are estimated from the training data.
 
 The imputer and scaler are fitted **only on the training split**. The fitted transformations are then applied unchanged to the validation and test splits. This prevents information from those partitions from leaking into preprocessing.
 
@@ -184,9 +184,9 @@ The teacher is a scikit-learn `MLPClassifier` with two hidden layers.
 
 **Architecture**
 
-\[
+$$
 30 \rightarrow 16 \rightarrow 8 \rightarrow 1
-\]
+$$
 
 The final output dimension is one because scikit-learn uses a single output unit for this binary classification configuration.
 
@@ -216,13 +216,13 @@ Each of the 30 standardised numerical features is represented by three fuzzy ter
 
 The implementation uses triangular membership functions. Their parameters are derived from the **training-set minimum, median, and maximum** for each feature:
 
-- `Low`: \((\min,\min,\text{median})\)
-- `Medium`: \((\min,\text{median},\max)\)
-- `High`: \((\text{median},\max,\max)\)
+- `Low`: $(\min,\min,\text{median})$
+- `Medium`: $(\min,\text{median},\max)$
+- `High`: $(\text{median},\max,\max)$
 
 A triangular membership function is defined by:
 
-\[
+$$
 \mu(x;a,b,c)=
 \max\left(
 \min\left(
@@ -230,9 +230,9 @@ A triangular membership function is defined by:
 \frac{c-x}{c-b}
 \right),0
 \right)
-\]
+$$
 
-where \(a\), \(b\), and \(c\) define the triangle's left endpoint, peak, and right endpoint. The membership degree lies between 0 and 1.
+where $a$, $b$, and $c$ define the triangle's left endpoint, peak, and right endpoint. The membership degree lies between 0 and 1.
 
 The fitted definitions are saved in `artifacts/membership_functions.joblib`.
 
@@ -246,17 +246,17 @@ For each training observation, the extractor:
 4. Calculates a rule weight from the selected membership degrees.
 5. Groups observations that produce identical antecedents.
 
-For feature \(j\), the selected term is:
+For feature $j$, the selected term is:
 
-\[
+$$
 A_j = \arg\max_{t \in \{Low,Medium,High\}} \mu_{j,t}(x_j)
-\]
+$$
 
 The rule weight is the product of the selected membership degrees across the 30 features:
 
-\[
+$$
 w_r = \prod_{j=1}^{30}\mu_{j,A_j}(x_j)
-\]
+$$
 
 Ties between membership terms are resolved deterministically by selecting the alphabetically smallest term. Each observation initially contributes support of one; support is accumulated when identical rules are grouped.
 
@@ -295,29 +295,29 @@ Each input feature is evaluated against its `Low`, `Medium`, and `High` membersh
 
 #### B. Antecedent evaluation — minimum t-norm
 
-For a rule with \(n\) antecedents, its firing strength is:
+For a rule with $n$ antecedents, its firing strength is:
 
-\[
+$$
 \alpha_r = \min\left(\mu_1(x_1),\mu_2(x_2),\ldots,\mu_n(x_n)\right)
-\]
+$$
 
 The minimum operator makes the weakest antecedent membership degree determine the rule's firing strength.
 
 #### C. Class-wise maximum aggregation
 
-For each class \(c\), the inference engine retains the maximum firing strength among rules with that consequent:
+For each class $c$, the inference engine retains the maximum firing strength among rules with that consequent:
 
-\[
+$$
 S_c = \max_{r:C_r=c}\alpha_r
-\]
+$$
 
 #### D. Winner-take-all decision
 
 The predicted class is the class with the highest aggregated activation:
 
-\[
+$$
 \hat{y} = \arg\max_c S_c
-\]
+$$
 
 Ties are resolved using a deterministic class-order rule. If no rule fires, the configured fallback class is used and the event is recorded for coverage and fallback evaluation.
 
@@ -427,35 +427,35 @@ The project uses multiple metrics because no single measure captures both predic
 
 For binary classification:
 
-\[
+$$
 Accuracy = \frac{TP+TN}{TP+TN+FP+FN}
-\]
+$$
 
-\[
+$$
 Precision = \frac{TP}{TP+FP}
 \qquad
 Recall = \frac{TP}{TP+FN}
-\]
+$$
 
-\[
+$$
 F1 = 2\cdot\frac{Precision\cdot Recall}{Precision+Recall}
-\]
+$$
 
 Fidelity is calculated against teacher predictions:
 
-\[
+$$
 Fidelity =
 \frac{1}{N}\sum_{i=1}^{N}
 \mathbb{1}\left[g_\phi(x_i)=f_\theta(x_i)\right]
-\]
+$$
 
 Coverage is:
 
-\[
+$$
 Coverage =
 \frac{\text{Observations covered by at least one rule}}
 {\text{Total observations}}
-\]
+$$
 
 A high fidelity score means that the surrogate imitates the teacher more closely. It does not necessarily mean that the surrogate is more accurate against the ground-truth labels.
 
@@ -504,12 +504,12 @@ Rows are actual classes and columns are predicted classes. Class `0` is benign; 
 
 **Fuzzy surrogate**
 
-\[
+$$
 \begin{bmatrix}
 52 & 2\\
 8 & 24
 \end{bmatrix}
-\]
+$$
 
 | Actual / Predicted | Benign | Malignant |
 |---|---:|---:|
@@ -518,21 +518,21 @@ Rows are actual classes and columns are predicted classes. Class `0` is benign; 
 
 **MLP teacher**
 
-\[
+$$
 \begin{bmatrix}
 54 & 0\\
 1 & 31
 \end{bmatrix}
-\]
+$$
 
 **Decision-tree surrogate**
 
-\[
+$$
 \begin{bmatrix}
 54 & 0\\
 6 & 26
 \end{bmatrix}
-\]
+$$
 
 The fuzzy surrogate correctly identifies 24 of the 32 malignant test observations. It produces eight false negatives and two false positives. This is an important limitation of the final model.
 
